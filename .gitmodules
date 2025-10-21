@@ -3,7 +3,7 @@
 	url = https://github.com/electro-smith/DaisySP.git
 [submodule "lib/libDaisy"]
 	path = lib/libDaisy
-	url = https://github.com/electro-smith/libDaisy.git
+	url = https://github.com/Farmer2K5/libDaisy.git
 [submodule "lib/CMSIS-DSP"]
 	path = lib/CMSIS-DSP
 	url = https://github.com/ARM-software/CMSIS-DSP.git
