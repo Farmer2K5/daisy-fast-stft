@@ -232,7 +232,7 @@ This project is shared freely for educational and experimental purposes.
 
 None of the source code or documentation is uniquely mine — it builds upon the collective work, examples, and shared knowledge of the **Teensy**, **Daisy**, **Arm CMSIS-DSP** , and **other open-source communities**, whose collaboration and creativity make this kind of exploration possible.
 
-I’m not a programmer by trade — especially not in C++ — and even less about DSP. Instead, I am someone learning through experimentation and curiosity.  This framework grew out of many hours reading forum posts, testing ideas, and learning from those far more skilled in this subject matter than I am.
+I’m not a programmer by trade — especially not in C++ — and know even less about DSP. Instead, I am someone learning through experimentation and curiosity.  This framework grew out of many hours reading forum posts, testing ideas, and learning from those far more skilled in this subject matter than I am.
 
 You are welcome to **use, modify, copy, and distribute** any part of this work — with or without attribution — for personal, academic, or commercial use. If you find it useful, please pay it forward by contributing your own discoveries back to the community.
 
