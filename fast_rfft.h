@@ -1,5 +1,5 @@
 /**
- * @file Fast_RFFT.hpp
+ * @file fast_rfft.h
  * @brief Lightweight, copyable wrapper for CMSIS-DSP real FFT (RFFT) transforms.
  *
  * @details
