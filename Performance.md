@@ -22,24 +22,24 @@ This document summarizes performance measurements of the STFT framework running 
 
 ## Results Summary
 
-| Audio  | FFT Size | Hop Size | Block Size | Processing Mode | Flash Memory (%) | Max CPU Load (%) | Notes            |
-|:------ |:-------- |:-------- |:---------- |:--------------- |:---------------- |:---------------- |:---------------- |
-| Mono   | 2048     | 512      | 64         | Complex         | 88.66            | 46.05            | ShyFFT 36.5% CPU |
-| Mono   | 1024     | 128      | 32         | Complex         | 80.34            | 39.04            |                  |
-| Mono   | 1024     | 128      | 64         | Complex         | 80.34            | 19.77            |                  |
-| Mono   | 1024     | 256      | 64         | Complex         | 80.34            | 19.72            |                  |
-| Mono   | 512      | 128      | 64         | Complex         | 77.21            | 10.24            |                  |
-| Mono   | 2048     | 512      | 64         | MagPhase        | 89.38            | 96.37            |                  |
-| Mono   | 1024     | 256      | 64         | MagPhase        | 81.06            | 44.82            |                  |
-| Mono   | 512      | 128      | 64         | MagPhase        | 77.92            | 22.69            |                  |
-| Stereo | 2048     | 512      | 64         | Complex         | 88.82            | 88.94            |                  |
-| Stereo | 1024     | 256      | 32         | Complex         | 80.50            | 75.54            |                  |
-| Stereo | 1024     | 256      | 64         | Complex         | 80.50            | 37.76            |                  |
-| Stereo | 512      | 128      | 64         | Complex         | 77.35            | 18.98            |                  |
-| Stereo | 2048     | 512      | 64         | MagPhase        | 89.68            | 189.37           | Buzzing audio    |
-| Stereo | 2048     | 512      | 128        | MagPhase        | 89.68            | 94.70            |                  |
-| Stereo | 1024     | 256      | 64         | MagPhase        | 81.36            | 87.97            |                  |
-| Stereo | 512      | 128      | 64         | MagPhase        | 78.23            | 43.97            |                  |
+| Audio  | FFT Size | Hop Size | Block Size | Processing Mode | Flash Memory (%) | Max CPU Load (%) | Notes         |
+|:------ |:-------- |:-------- |:---------- |:--------------- |:---------------- |:---------------- |:------------- |
+| Mono   | 2048     | 512      | 64         | Complex         | 88.66            | 46.05            |               |
+| Mono   | 1024     | 128      | 32         | Complex         | 80.34            | 39.04            |               |
+| Mono   | 1024     | 128      | 64         | Complex         | 80.34            | 19.77            |               |
+| Mono   | 1024     | 256      | 64         | Complex         | 80.34            | 19.72            |               |
+| Mono   | 512      | 128      | 64         | Complex         | 77.21            | 10.24            |               |
+| Mono   | 2048     | 512      | 64         | MagPhase        | 89.38            | 96.37            |               |
+| Mono   | 1024     | 256      | 64         | MagPhase        | 81.06            | 44.82            |               |
+| Mono   | 512      | 128      | 64         | MagPhase        | 77.92            | 22.69            |               |
+| Stereo | 2048     | 512      | 64         | Complex         | 88.82            | 88.94            |               |
+| Stereo | 1024     | 256      | 32         | Complex         | 80.50            | 75.54            |               |
+| Stereo | 1024     | 256      | 64         | Complex         | 80.50            | 37.76            |               |
+| Stereo | 512      | 128      | 64         | Complex         | 77.35            | 18.98            |               |
+| Stereo | 2048     | 512      | 64         | MagPhase        | 89.68            | 189.37           | Buzzing audio |
+| Stereo | 2048     | 512      | 128        | MagPhase        | 89.68            | 94.70            |               |
+| Stereo | 1024     | 256      | 64         | MagPhase        | 81.36            | 87.97            |               |
+| Stereo | 512      | 128      | 64         | MagPhase        | 78.23            | 43.97            |               |
 
 ---
 
