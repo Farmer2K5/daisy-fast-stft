@@ -6,12 +6,12 @@ CPP_SOURCES = main_mono.cpp
 # CPP_SOURCES = main_stereo.cpp
 
 # Path to DaisySP and LibDaisy 
-DAISYSP_DIR ?= ../../Libs/DaisySP
-LIBDAISY_DIR ?= ../../Libs/libDaisy
+DAISYSP_DIR ?= ./lib/DaisySP
+LIBDAISY_DIR ?= ./lib/libDaisy
 
 # Path to CMSIS-DSP and CMSIS-Core
-CMSIS_PATH = ../../Libs/CMSIS-DSP/
-CMSIS_CORE_PATH = ../../Libs/CMSIS_5/CMSIS/Core
+CMSIS_PATH = ./lib/CMSIS-DSP/
+CMSIS_CORE_PATH = ./lib/CMSIS_5/CMSIS/Core
 
 # Include the main source files for each function category
 CMSIS_SOURCES = $(CMSIS_PATH)/Source/TransformFunctions/TransformFunctions.c \
