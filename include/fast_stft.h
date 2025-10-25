@@ -33,9 +33,10 @@
 
 #pragma once
 #include <cstring>
-#include "fast_rfft.h"
-#include "fast_window.h"
 #include "arm_math.h"
+#include "fast_rfft.h"
+#include "fast_spectral.h"
+#include "fast_window.h"
 
 namespace dsp
 {
@@ -255,9 +256,9 @@ namespace dsp
             // 3. Compile-time spectral processing path
             if constexpr (kProcessingMode == ProcessingMode::MagPhase)
             {
-                fft_.ToMagPhase(fft_out_, mags_, phases_);
+                dsp::ToMagPhase(fft_out_, mags_, phases_, FFT_SIZE);
                 ProcessFrame(mags_, phases_, N_BINS);
-                fft_.FromMagPhase(mags_, phases_, fft_out_);
+                dsp::FromMagPhase(mags_, phases_, fft_out_, FFT_SIZE);
             }
             else // ProcessingMode::Complex
             {
