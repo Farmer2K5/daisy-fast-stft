@@ -1,24 +1,26 @@
 /**
  * @file fast_spectral.h
- * @brief Spectral-domain utilities for magnitude, phase, and feature analysis.
+ * @brief Conversion utilities between complex FFT data and magnitude/phase representations.
  *
  * @details
- * This header provides inline functions for converting between complex FFT data
- * (real/imag interleaved format) and polar representations (magnitude and phase).
+ * The **Fast Spectral** conversion module provides efficient functions to convert between
+ * packed real FFT (RFFT) buffers and their polar forms (magnitude and phase).
  *
- * These are the core building blocks for frequency-domain audio processing:
- * - Magnitude and phase extraction for analysis or feature computation
- * - Reconstruction of complex FFT frames for resynthesis
+ * These utilities serve as the foundation for spectral-domain processing, analysis,
+ * and resynthesis. They are typically used with the FastDSP STFT framework and
+ * CMSIS-DSP's real FFT implementations.
  *
- * @note Designed to complement `Fast_RFFT`, `Fast_STFT`, and `Fast_ISTFT`.
- * All functions use CMSIS-DSP intrinsics (`arm_sqrt_f32`, `arm_atan2_f32`, etc.)
- * for efficient execution on ARM Cortex-M processors.
+ * Typical use cases include:
+ * - Feature extraction (spectral centroid, flux, etc.)
+ * - Spectral filtering, morphing, or resynthesis
+ * - Visualization and metering
  *
- * @ingroup FastDSP
- * @defgroup FastSpectral Spectral Utilities
- * @ingroup FastDSP
- * @brief Utilities for spectral-domain analysis, magnitude/phase manipulation,
- *        and reconstruction.
+ * @note
+ * Functions are compatible with CMSIS-DSP `arm_rfft_fast_f32()` packed output format.
+ *
+ * @ingroup FastDSPSpectral
+ * @defgroup FastDSPSpectralConversions Spectral Conversion Utilities
+ * @brief Convert between packed FFT data and magnitude/phase representations.
  */
 
 #pragma once
@@ -26,42 +28,35 @@
 #include <cstddef>
 #include "arm_math.h"
 
-namespace dsp
+namespace dsp::spectral
 {
 
-    // --------------------------------------------------------------------
-    // Magnitude / Phase Conversion Utilities
-    // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // 1. Magnitude / Phase Conversion Utilities
+    // -----------------------------------------------------------------------------
 
     /**
-     * @brief Convert FFT output (complex bins) to magnitude and phase arrays.
-     * @ingroup FastSpectral
+     * @brief Convert packed FFT output (complex bins) to magnitude and phase arrays.
+     * @ingroup FastSpectralConversions
      *
-     * @param fft_data Pointer to FFT output buffer (packed complex, size = `fft_size`).
-     * @param mags     Output magnitudes array (size = `fft_size / 2 + 1`).
-     * @param phases   Output phases array (size = `fft_size / 2 + 1`).
-     * @param fft_size Size of the full FFT frame (number of real samples).
+     * @param[in]  fft_data Pointer to FFT output buffer (packed complex, length = `fft_size`).
+     * @param[out] mags     Output magnitude array (length = `fft_size / 2 + 1`).
+     * @param[out] phases   Output phase array (length = `fft_size / 2 + 1`).
+     * @param[in]  fft_size Size of the full FFT frame (number of real input samples).
      *
      * @details
-     * Converts the packed real FFT output (as produced by `arm_rfft_fast_f32()`)
-     * into magnitude and phase arrays for each bin.
+     * Converts CMSIS-DSP RFFT output (interleaved Re/Im pairs) into magnitude and phase arrays.
      *
      * - **DC (bin 0)** and **Nyquist (bin N/2)** are real-only and have zero phase.
-     * - Phases are returned in **radians** in the range [-π, +π].
-     * - Magnitudes are computed using `sqrt(re² + im²)` with CMSIS-DSP `arm_sqrt_f32()`.
-     * - Use these arrays for spectral-domain operations such as:
-     *   - Spectral filtering
-     *   - Spectral morphing or resynthesis
-     *   - Feature analysis (centroid, flux, etc.)
+     * - Phases are expressed in radians within the range [-π, +π].
+     * - Magnitudes use CMSIS-DSP `arm_sqrt_f32()` for fast scalar computation.
      *
-     * @note
-     * The FFT buffer layout must match CMSIS-DSP's **real FFT (RFFT)** convention:
+     * ### FFT Buffer Layout
      * ```
-     * X[0] = DC (real)
-     * X[1] = Nyquist (real)
-     * X[2], X[3] = Re(X[1]), Im(X[1])
-     * X[4], X[5] = Re(X[2]), Im(X[2])
-     * ...
+     * fft_data[0] = DC (real)
+     * fft_data[1] = Nyquist (real)
+     * fft_data[2*k]   = Re(bin k)
+     * fft_data[2*k+1] = Im(bin k)
      * ```
      *
      * @see FromMagPhase()
@@ -69,86 +64,117 @@ namespace dsp
      * @par Example
      * @code
      * float mags[N_BINS], phases[N_BINS];
-     * dsp::ToMagPhase(fft_out, mags, phases, FFT_SIZE);
+     * dsp::spectral::ToMagPhase(fft_out, mags, phases, FFT_SIZE);
      * @endcode
      */
     inline void ToMagPhase(const float *fft_data, float *mags, float *phases, size_t fft_size)
     {
-        size_t half = fft_size / 2;
+        const size_t half = fft_size / 2;
 
-        // DC bin (pure real)
+        // DC bin (real-only)
         mags[0] = fft_data[0];
         phases[0] = 0.0f;
 
-        // Process bins 1 .. N/2 - 1
+        // Complex bins (1 .. N/2 - 1)
         for (size_t k = 1; k < half; ++k)
         {
-            float re = fft_data[2 * k];
-            float im = fft_data[2 * k + 1];
-            float mag_sq = re * re + im * im;
+            const float re = fft_data[2 * k];
+            const float im = fft_data[2 * k + 1];
+            const float mag_sq = re * re + im * im;
 
-            // Compute magnitude and phase using CMSIS intrinsics
             arm_sqrt_f32(mag_sq, &mags[k]);
             arm_atan2_f32(im, re, &phases[k]);
         }
 
-        // Nyquist bin (pure real)
+        // Nyquist bin (real-only)
         mags[half] = fft_data[1];
         phases[half] = 0.0f;
     }
 
     /**
-     * @brief Reconstruct complex FFT data from magnitude and phase arrays.
-     * @ingroup FastSpectral
+     * @brief Reconstruct packed complex FFT data from magnitude and phase arrays.
+     * @ingroup FastSpectralConversions
      *
-     * @param mags     Input magnitudes array (size = `fft_size / 2 + 1`).
-     * @param phases   Input phases array (size = `fft_size / 2 + 1`).
-     * @param fft_data Output complex FFT array (packed format, size = `fft_size`).
-     * @param fft_size FFT size (number of real samples).
+     * @param[in]  mags     Magnitude array (length = `fft_size / 2 + 1`).
+     * @param[in]  phases   Phase array (length = `fft_size / 2 + 1`).
+     * @param[out] fft_data Output FFT buffer (packed complex, length = `fft_size`).
+     * @param[in]  fft_size FFT size (number of real input samples).
      *
      * @details
-     * Converts polar spectral data (magnitude and phase) back into packed
-     * complex FFT format, ready for inverse FFT (e.g., via `Fast_RFFT::Inverse()`).
+     * Recreates the interleaved real/imaginary FFT buffer expected by
+     * `arm_rfft_fast_f32()` or `Fast_ISTFT` from polar spectral data.
      *
-     * - Magnitude and phase are converted as:
-     *   ```
-     *   Re[k] = mag[k] * cos(phase[k])
-     *   Im[k] = mag[k] * sin(phase[k])
-     *   ```
-     * - DC and Nyquist bins are real-only.
-     * - Output format matches CMSIS-DSP's RFFT convention.
+     * - **DC and Nyquist bins** are real-only.
+     * - Other bins are reconstructed using cosine/sine of phase values.
+     * - Ready for inverse FFT or further processing.
      *
-     * @note
-     * This function is the inverse of `ToMagPhase()` and is typically used
-     * in conjunction with `Fast_STFT` or `Fast_ISTFT` for spectral-domain
-     * effects and resynthesis.
+     * @see ToMagPhase()
      *
      * @par Example
      * @code
-     * float mags[N_BINS], phases[N_BINS];
-     * // modify spectral data...
-     * dsp::FromMagPhase(mags, phases, fft_buf, FFT_SIZE);
-     * fft.Inverse(fft_buf, time_signal);
+     * float mags[N_BINS], phases[N_BINS], fft_buf[FFT_SIZE];
+     * dsp::spectral::FromMagPhase(mags, phases, fft_buf, FFT_SIZE);
      * @endcode
      */
     inline void FromMagPhase(const float *mags, const float *phases, float *fft_data, size_t fft_size)
     {
-        size_t half = fft_size / 2;
+        const size_t half = fft_size / 2;
 
         // DC and Nyquist bins (real-only)
         fft_data[0] = mags[0];
         fft_data[1] = mags[half];
 
-        // Fill real/imag pairs for 1..N/2 - 1
+        // Complex bins
         for (size_t k = 1; k < half; ++k)
         {
-            float mag = mags[k];
-            float phase = phases[k];
+            const float mag = mags[k];
+            const float phase = phases[k];
             fft_data[2 * k] = mag * arm_cos_f32(phase);
             fft_data[2 * k + 1] = mag * arm_sin_f32(phase);
         }
     }
 
-} // namespace dsp
+    // -----------------------------------------------------------------------------
+    // 2. Frequency Bin Calculation
+    // -----------------------------------------------------------------------------
+
+    /**
+     * @brief Compute frequency bin center frequencies for a given FFT size and sample rate.
+     *
+     * @param[out] freqs       Output array of bin frequencies (length = `fft_size / 2 + 1`).
+     * @param[in]  fft_size    FFT length in samples.
+     * @param[in]  sample_rate Sampling rate in Hz.
+     *
+     * @details
+     * Computes the center frequency for each FFT bin:
+     * \f[
+     * f_k = \frac{k \cdot f_s}{N}
+     * \f]
+     * where `f_s` is the sampling rate and `N` is the FFT size.
+     *
+     * ### Usage Notes
+     * - Only non-negative frequencies (0–Nyquist) are produced.
+     * - The resulting `freqs` array can be precomputed and reused for all
+     *   subsequent spectral feature analyses.
+     * - Commonly used with feature functions like `SpectralCentroid()` and `SpectralRolloff()`.
+     *
+     * ### Example
+     * ```cpp
+     * constexpr size_t FFT_SIZE = 1024;
+     * float freqs[FFT_SIZE / 2 + 1];
+     * dsp::spectral::ComputeFrequencyBins(freqs, FFT_SIZE, 48000.0f);
+     * ```
+     *
+     * @ingroup FastSpectralFeatures
+     */
+    inline void ComputeFrequencyBins(float *freqs, size_t fft_size, float sample_rate)
+    {
+        const size_t n_bins = fft_size / 2 + 1;
+        const float bin_hz = sample_rate / static_cast<float>(fft_size);
+        for (size_t k = 0; k < n_bins; ++k)
+            freqs[k] = k * bin_hz;
+    }
+
+} // namespace dsp::spectral
 
 /* EOF */

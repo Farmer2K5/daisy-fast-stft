@@ -19,10 +19,9 @@
  * - `Fast_ISTFT` (inverse short-time Fourier transform)
  * - `Fast_RFFT` (real FFT wrapper)
  *
- * @ingroup FastDSP
- * @defgroup FastWindow Window Functions
- * @ingroup FastDSP
- * @brief Audio-oriented window generation, normalization, and application tools.
+ * @ingroup FastDSPCore
+ * @defgroup FastDSPCoreWindow Windowing Functions
+ * @brief Runtime window creation, normalization, and application.
  *
  * @note
  * Windows are used in spectral audio systems to reduce spectral leakage and ensure
@@ -35,6 +34,7 @@
 
 namespace dsp
 {
+
     // -------------------------------------------------------------------------
     // Enumerations
     // -------------------------------------------------------------------------

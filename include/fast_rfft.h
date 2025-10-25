@@ -25,10 +25,9 @@
  * fft.Inverse(freq_buf, time_buf); // Frequency → Real domain
  * @endcode
  *
- * @ingroup FastDSP
- * @defgroup FastFFT FFT and Transform Utilities
- * @ingroup FastDSP
- * @brief Real FFT (RFFT) wrappers and transform helpers for CMSIS-DSP.
+ * @ingroup FastDSPCore
+ * @defgroup FastDSPCoreFFT Fast Real FFT Utilities
+ * @brief Wrapper and helper functions for CMSIS-DSP real FFTs.
  *
  * @note
  * Designed for real-time spectral processing on ARM Cortex-M7/M4 microcontrollers

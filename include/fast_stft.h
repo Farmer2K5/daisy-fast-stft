@@ -26,10 +26,9 @@
  * Designed for high-performance embedded audio environments such as
  * ARM Cortex-M7 (Daisy Seed, STM32H7) using CMSIS-DSP intrinsics.
  *
- * @ingroup FastDSP
- * @defgroup FastSTFT Short-Time Fourier Transform (STFT)
- * @ingroup FastDSP
- * @brief Real-time block-based spectral processing framework.
+ * @ingroup FastDSPCore
+ * @defgroup FastDSPCoreSTFT Short-Time Fourier Transform (STFT)
+ * @brief Real-time STFT framework for analysis and spectral-domain effects.
  */
 
 #pragma once
@@ -41,6 +40,7 @@
 
 namespace dsp
 {
+
     /**
      * @enum ProcessingMode
      * @brief Selects which spectral representation the STFT will process.
@@ -319,9 +319,9 @@ namespace dsp
             // --- 3. User-defined spectral processing ---
             if constexpr (kProcessingMode == ProcessingMode::MagPhase)
             {
-                dsp::ToMagPhase(fft_out_, mags_, phases_, FFT_SIZE);
+                dsp::spectral::ToMagPhase(fft_out_, mags_, phases_, FFT_SIZE);
                 ProcessFrame(mags_, phases_, N_BINS);
-                dsp::FromMagPhase(mags_, phases_, fft_out_, FFT_SIZE);
+                dsp::spectral::FromMagPhase(mags_, phases_, fft_out_, FFT_SIZE);
             }
             else
             {

@@ -20,10 +20,9 @@
  *  - **Modular DSP architectures** with separate analysis/synthesis blocks
  *  - **Machine-learning audio models** operating in the spectral domain
  *
- * @ingroup FastDSP
- * @defgroup FastISTFT Inverse Short-Time Fourier Transform (ISTFT)
- * @ingroup FastDSP
- * @brief Windowed overlap-add resynthesis of audio from spectral frames.
+ * @ingroup FastDSPCore
+ * @defgroup FastDSPCoreISTFT Inverse Short-Time Fourier Transform
+ * @brief Overlap-add resynthesis utilities for reconstructing time-domain audio.
  */
 
 #pragma once
@@ -34,6 +33,7 @@
 
 namespace dsp
 {
+
     /**
      * @class Fast_ISTFT
      * @brief Performs inverse overlap-add reconstruction from spectral frames.

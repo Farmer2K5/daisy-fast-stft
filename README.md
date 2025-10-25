@@ -1,220 +1,206 @@
-# STFT Framework for Daisy Seed
+# Real-Time FFT/STFT Framework for Embedded Spectral Audio Processing
 
-A modular **Short-Time Fourier Transform (STFT)** framework for real-time **spectral audio processing** on the [Daisy Seed](https://www.electro-smith.com/daisy).  The framework enables efficient frequency-domain effects, analysis, and transformations using a simple, extensible C++ API.
+This modular C++ framework provides a unified interface for **FFT/STFT/ISTFT**, **windowing**, **spectral conversions**, **frequency-domain operations**, and **spectral feature extraction** — all designed for for _high-performance real-time_ spectral audio processing on the [**Electrosmith Daisy Seed**](https://www.electro-smith.com/daisy/daisy).
+
+## ⚠️ Work in Progress Disclaimer
+
+This is an experimental project and a work in progress.
+
+It was developed primarily for research and learning on the Daisy Seed, and while it has been tested on real hardware, no guarantees are made regarding the accuracy, stability, or sonic quality of its results.
+
+This code should be viewed as a foundation for exploration — not a finished product. You are encouraged to modify, measure, and validate it for your own purposes, and to share improvements or findings with the community.
 
 ---
 
-## Overview
+## Highlights
 
-The **STFT Framework** provides a block-based pipeline that handles:
+- **Designed for the Daisy Seed** (Cortex-M7 @ 480 MHz Boost Mode)
+- **Real-time FFT/STFT/ISTFT** spectral processing using CMSIS-DSP
+- **Header-only**, self-contained, and lightweight — no heap allocation
+- **COLA-correct overlap-add** synthesis for perfect reconstruction
+- **Spectral conversions and analysis** for packed FFT data
+- **Feature extraction**: centroid, flux, rolloff, spread, flatness, and more
+- Clean integration with **CMSIS-DSP (`arm_math.h`)**
 
-- Circular buffering and overlap-add reconstruction  
-- Hann windowing for perfect COLA (Constant Overlap-Add) synthesis  
-- Fast real FFT (`Fast_RFFT`) via [CMSIS-DSP](https://arm-software.github.io/CMSIS_5/DSP/html/index.html)  
-- Optional magnitude/phase conversion  
-- User-overridable spectral processing callbacks  
+---
 
-The framework supports **two compile-time modes**:
+## Module Overview
 
-- `ProcessingMode::MagPhase` — operates on magnitude and phase arrays (perceptual domain)  
+```
+┌──────────────────────────┐
+│         FFTStack         │
+│ ┌──────────────┐         │  Core → FFT, STFT, ISTFT, Windowing
+│ │   Core DSP   │         │
+│ └──────────────┘         │
+│ ┌──────────────┐         │  Spectral → Conversions, Ops, Features
+│ │   Spectral   │         │
+│ └──────────────┘         │
+└──────────────────────────┘
+```
+
+### Core Modules
+
+- `fast_rfft.h` — CMSIS-DSP real FFT wrapper (`Fast_RFFT`)
+- `fast_stft.h` — Streaming Short-Time Fourier Transform (`Fast_STFT`)
+- `fast_istft.h` — Inverse STFT for overlap-add synthesis (`Fast_ISTFT`)
+- `fast_window.h` — Window generation and normalization
+
+### Spectral Modules
+
+- `fast_spectral.h` — FFT ↔ magnitude/phase conversions and frequency bins
+- `fast_spectral_ops.h` — Frequency-domain arithmetic and morphing tools
+- `fast_spectral_features.h` — Spectral feature extraction utilities
+
+Include all modules at once:
+
+```cpp
+#include "fast_dsp.h"
+```
+
+### STFT Module
+
+The **STFT Module** provides a block-based pipeline that handles:
+
+- Circular buffering and overlap-add reconstruction
+- Hann windowing for perfect COLA (Constant Overlap-Add) synthesis
+- Fast real FFT (`Fast_RFFT`) via [CMSIS-DSP](https://arm-software.github.io/CMSIS_5/DSP/html/index.html)
+- Optional magnitude/phase conversion
+- User-overridable spectral processing callbacks
+
+The STFT module supports **two compile-time modes**:
+
+- `ProcessingMode::MagPhase` — operates on magnitude and phase arrays (perceptual domain)
 - `ProcessingMode::Complex` — operates directly on FFT complex bins (mathematical domain)
 
-See [`Notes.md`](./Notes.md) for Insights on CMSIS-DSP RFFT behavior, DC/Nyquist handling, and implementation notes.
+See [`Processing_Modes.md`](./Processing_Modes.md) for futher details.
 
 ---
 
-## Architecture
+## Practical Examples
 
-```
-Audio Input (ADC / I²S / Daisy Audio Callback)
-        │
-        ▼
-Circular Buffer Manager
-    • Collects streaming samples
-    • Triggers STFT frame when hop size reached
-        │
-        ▼
-Windowing Stage
-    • Applies Hann window (COLA-compliant)
-    • Computes COLA normalization gain
-        │
-        ▼
-Forward FFT (arm_rfft_fast_f32)
-    • Converts time-domain frame → frequency-domain bins
-    • Produces N/2+1 complex bins
-        │
-        ▼
-───────────────────────────────────────────────────────────────────
- USER PROCESSING STAGE
-───────────────────────────────────────────────────────────────────
-    MagPhase Mode:
-        - ToMagPhase()
-        - ProcessFrame()
-        - FromMagPhase()
-
-    Complex Mode:
-        - ProcessFrameComplex()
-
-    (Apply EQ, spectral delay, vocoder, morphing, filtering, etc.)
-───────────────────────────────────────────────────────────────────
-        │
-        ▼
-Inverse FFT (arm_rfft_fast_f32)
-    • Converts frequency-domain bins → time-domain frame
-        │
-        ▼
-Overlap-Add Synthesis
-    • Combines overlapping frames
-    • Ensures perfect reconstruction (COLA)
-        │
-        ▼
-Audio Output (DAC / I²S / Daisy Audio Callback)
-```
-
----
-
-## Components
-
-### 1. `dsp::Fast_RFFT<FFT_SIZE>`
-
-**Purpose:**  
-A lightweight, type-safe C++ wrapper around the CMSIS-DSP *fast real FFT* (`arm_rfft_fast_f32`) routines. It provides a minimal interface for forward/inverse transforms, plus optional utilities for:
-
-- Generating and applying windows (Hann, Hamming, Blackman, Gaussian).
-- Normalizing windows (Sum or RMS).
-- Converting between complex FFT output and magnitude/phase arrays.
-
-**Key points:**
-
-- Works entirely in `float32`.
-- Copyable (no heap allocation or static state).
-- Supports FFT sizes 32 → 4096 samples.
-
-**Primary API:**
-
+### 1️⃣ Real-Time Spectral Effect
 ```cpp
-dsp::Fast_RFFT<1024> fft;
-
-fft.Forward(time_buf, freq_buf);   // Real -> complex
-fft.Inverse(freq_buf, time_buf);   // Complex -> real
-
-fft.ToMagPhase(freq_buf, mags, phases);
-fft.FromMagPhase(mags, phases, freq_buf);
-```
-
-### 2. `dsp::Fast_STFT<FFT_SIZE, HOP_SIZE, BLOCK_SIZE, PROCESSING_MODE>`
-
-**Purpose:**  
-Implements a full **streaming STFT engine** for real-time DSP — an overlap-add framework that:
-
-1. Buffers audio blocks.
-2. Applies a window.
-3. Runs the FFT via `Fast_RFFT`.
-4. Lets the user modify the spectrum.
-5. Reconstructs the signal via inverse FFT and COLA synthesis.
-
-**Modes (compile-time via template):**
-
-- `ProcessingMode::MagPhase` — Convert to magnitude/phase, modify, and rebuild.
-- `ProcessingMode::Complex` — Skip polar conversion and process complex bins directly (for convolution, all-pass, etc.).
-
-**You subclass it and override** one of:
-
-```cpp
-void ProcessFrame(float* mags, float* phases, size_t n_bins) override;
-```
-
-or
-
-```cpp
-void ProcessFrameComplex(float* fft_bins, size_t n_bins) override;
-```
-
-**Example: simple magnitude scaling**
-
-```cpp
-class MySpectralGain : public dsp::Fast_STFT<1024, 256, 64> {
-public:
-    void ProcessFrame(float* mags, float* phases, size_t n_bins) override {
-        for (size_t i = 0; i < n_bins; ++i)
-            mags[i] *= 0.5f;  // attenuate by 6 dB
-    }
-};
-```
-
----
-
-## Usage Example
-
-### Basic setup:
-
-```cpp
-#include "fast_stft.h"
+#include "fast_dsp.h"
 using namespace dsp;
 
-class MySpectralEQ : public Fast_STFT<1024, 256, 64, ProcessingMode::MagPhase>
-{
+// Simple high-frequency damping effect
+class HighCut : public Fast_STFT<1024, 256, 64, ProcessingMode::MagPhase> {
 public:
-    void ProcessFrame(float* mags, float* phases, size_t n_bins) override
-    {
-        for (size_t k = 0; k < n_bins; ++k)
-        {
-            float freq = (48000.0f / 1024.0f) * k;
-            if (freq > 8000.0f) mags[k] *= 0.5f; // simple high cut
+    void ProcessFrame(float* mags, float* phases, size_t n_bins) override {
+        const float fs = 48000.0f;
+        const float bin_hz = fs / FFT_SIZE;
+        for (size_t k = 0; k < n_bins; ++k) {
+            if (bin_hz * k > 8000.0f) mags[k] *= 0.4f; // attenuate highs
+        }
+    }
+};
+
+HighCut stft;
+
+void AudioCallback(float** in, float** out, size_t size) {
+    stft.ProcessAudioBlock(in[0], out[0]);
+}
+```
+**Concept:** Subclass `Fast_STFT` to process magnitude and phase (perceptual domain).  
+**Result:** Smooth high-frequency roll-off with natural reconstruction.
+
+---
+
+### 2️⃣ Complex-Domain Phase Modulator
+```cpp
+class PhaseTilt : public Fast_STFT<1024, 256, 64, ProcessingMode::Complex> {
+public:
+    void ProcessFrameComplex(float* fft_bins, size_t n_bins) override {
+        for (size_t k = 1; k < n_bins; ++k) {
+            float re = fft_bins[2*k];
+            float im = fft_bins[2*k + 1];
+            float p  = 0.002f * k;
+            float c = arm_cos_f32(p);
+            float s = arm_sin_f32(p);
+            fft_bins[2*k]     = re*c - im*s;
+            fft_bins[2*k + 1] = re*s + im*c;
         }
     }
 };
 ```
+**Concept:** Operates directly on complex bins to apply progressive phase skew.  
+**Result:** Produces a “warbling” or “bent phase” spectral effect.
 
-### Daisy audio callback:
+---
 
+### 3️⃣ Offline Resynthesis with ISTFT
 ```cpp
-MySpectralEQ stft;
+#include "fast_dsp.h"
 
-void AudioCallback(float** in, float** out, size_t size)
-{
-    stft.ProcessAudioBlock(in[0], out[0]);
-}
+constexpr size_t FFT_SIZE = 1024;
+constexpr size_t HOP_SIZE = 256;
 
-int main(void)
-{
-    hw.Init();
-    hw.SetAudioBlockSize(64);
-    hw.StartAudio(AudioCallback);
-    while (1) {}
+dsp::Fast_ISTFT<FFT_SIZE, HOP_SIZE> istft;
+
+void ReconstructFromFrames(float** fft_frames, size_t num_frames, float* output) {
+    float hop[HOP_SIZE];
+    size_t pos = 0;
+    for (size_t i = 0; i < num_frames; ++i) {
+        istft.ProcessFrame(fft_frames[i], hop);
+        memcpy(&output[pos], hop, sizeof(float) * HOP_SIZE);
+        pos += HOP_SIZE;
+    }
 }
 ```
+**Concept:** Demonstrates frame-based reconstruction from spectral data.  
+**Use Case:** Ideal for resynthesis after spectral modification or machine-learning processing.
 
 ---
 
-## Choosing a Processing Mode
+### 4️⃣ Spectral Analysis and Feature Extraction
+```cpp
+#include "fast_dsp.h"
 
-| Mode           | Use Case                                          | Notes                                          |
-| -------------- | ------------------------------------------------- | ---------------------------------------------- |
-| **`MagPhase`** | EQ, spectral compression, morphing, pitch/time FX | Operates in magnitude/phase domain (intuitive) |
-| **`Complex`**  | Convolution, filters, linear spectral math        | Faster, phase-coherent                         |
+constexpr size_t FFT_SIZE = 1024;
+constexpr size_t N_BINS = FFT_SIZE / 2 + 1;
 
-See [`Processing_Modes.md`](./Processing_Modes.md) for detailed comparison.
+float mags[N_BINS];
+float freqs[N_BINS];
+float prev_mags[N_BINS];
+
+dsp::spectral::ComputeFrequencyBins(freqs, FFT_SIZE, 48000.0f);
+
+float centroid = dsp::spectral::features::SpectralCentroid(mags, freqs, N_BINS);
+float flux     = dsp::spectral::features::SpectralFlux(mags, prev_mags, N_BINS);
+float flatness = dsp::spectral::features::SpectralFlatness(mags, N_BINS);
+```
+**Concept:** Compute scalar spectral descriptors for feature tracking or visualization.  
+**Result:** Produces normalized analysis metrics useful for adaptive DSP or ML inputs.
 
 ---
 
-## Performance Notes
+### 5️⃣ Spectral Morphing Using Ops
+```cpp
+#include "fast_dsp.h"
 
-- Designed for **ARM Cortex-M7** targets (Daisy Seed, Daisy Patch, etc.)  
-- Tested up to 2048-point FFT with 4× overlap at 48 kHz sample rate  
-- Efficient fixed-size arrays, no heap allocation  
-- Uses `arm_rfft_fast_f32()` for optimized FFT computation  
+constexpr size_t FFT_SIZE = 1024;
+constexpr size_t N_BINS = FFT_SIZE / 2 + 1;
 
-See [`Performance.md`](./Performance.md) for CPU load, flash usage, and optimization results on Daisy Seed
+float fftA[FFT_SIZE]; // Spectrum A
+float fftB[FFT_SIZE]; // Spectrum B
+float mixed[FFT_SIZE];
+
+dsp::spectral::ops::WeightedMix(fftA, fftB, mixed, 0.5f, FFT_SIZE);
+```
+**Concept:** Blends two FFT frames’ magnitude and phase smoothly.  
+**Result:** Enables cross-synthesis or morphing between sound sources.
 
 ---
 
-## Example Projects
+## Performance
+ 
+Typical throughput and profiling data are summarized in [Performance.md](Performance.md).
 
-| File              | Description                                     |
-| ----------------- | ----------------------------------------------- |
-| `main_mono.cpp`   | Single-channel example with CPU load monitoring |
-| `main_stereo.cpp` | Dual-channel stereo processing example          |
+---
+
+## Developer Notes
+
+Design rationale, CMSIS-DSP nuances, and FFT behavior insights are provided in [Notes.md](Notes.md).
 
 ---
 
@@ -228,14 +214,10 @@ See [`Performance.md`](./Performance.md) for CPU load, flash usage, and optimiza
 
 ## License & Acknowledgments
 
-This project is shared freely for educational and experimental purposes.  
+This framework is released under a permissive open license.  
+You are free to use, modify, and redistribute this work, with attribution appreciated to the embedded DSP community.
 
-None of the source code or documentation is uniquely mine — it builds upon the collective work, examples, and shared knowledge of the **Teensy**, **Daisy**, **Arm CMSIS-DSP** , and **other open-source communities**, whose collaboration and creativity make this kind of exploration possible.
+> None of this code is uniquely mine — it draws heavily on the shared knowledge of the **Daisy**, **Teensy**, **ARM**, and other DSP communities.  
+> I am not a professional C++ developer, and this framework represents an ongoing learning effort built from their contributions.
 
-I’m not a programmer by trade — especially not in C++ — and know even less about DSP. Instead, I am someone learning through experimentation and curiosity.  This framework grew out of many hours reading forum posts, testing ideas, and learning from those far more skilled in this subject matter than I am.
-
-You are welcome to **use, modify, copy, and distribute** any part of this work — with or without attribution — for personal, academic, or commercial use. If you find it useful, please pay it forward by contributing your own discoveries back to the community.
-
-Special thanks to the countless developers, forum members, and DSP enthusiasts whose posts, code snippets, and shared experiments continue to make embedded audio a joy to explore.
-
----
+Special thanks to the countless developers, forum members, and DSP enthusiasts whose posts, code snippets, and shared experiments continue to inspire.
