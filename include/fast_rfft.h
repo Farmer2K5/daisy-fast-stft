@@ -1,21 +1,18 @@
 /**
  * @file fast_rfft.h
- * @brief Lightweight, copyable wrapper for CMSIS-DSP real FFT (RFFT) transforms.
+ * @brief Lightweight C++ wrapper for CMSIS-DSP real FFT (RFFT) transforms.
  *
  * @details
- * This header defines the `dsp::Fast_RFFT` class template — a minimal, type-safe,
- * and copyable C++ wrapper around the CMSIS-DSP `arm_rfft_fast_f32` API.
- * It supports forward and inverse real-valued FFT operations using the optimized
- * ARM Fast RFFT routines, providing both magnitude/phase conversions and
- * window utility helpers.
+ * The `dsp::Fast_RFFT` class provides a thin, type-safe, and copyable wrapper
+ * around the CMSIS-DSP `arm_rfft_fast_f32` API. It simplifies FFT operations
+ * for embedded DSP development and integrates cleanly with the other components
+ * of the FastDSP framework.
  *
- * **Key Features:**
- * - Uses CMSIS-DSP `arm_rfft_fast_instance_f32` for efficient FFT computation.
- * - Compile-time FFT size selection (supports 32–4096 samples).
- * - Forward and inverse transforms for real-valued signals.
- * - Built-in window generation and normalization utilities.
- * - Optional conversion between complex spectra and magnitude/phase.
- * - Fully copyable and instance-safe for embedded applications.
+ * Features:
+ * - Compile-time FFT size selection (32–4096 samples)
+ * - Fast real-valued forward/inverse FFTs using CMSIS-DSP
+ * - Compatible with magnitude/phase conversions and windowing utilities
+ * - Fully copyable and safe for use in real-time audio callbacks
  *
  * **Typical Use:**
  * @code
@@ -23,13 +20,20 @@
  * float time_buf[1024];
  * float freq_buf[1024];
  *
- * fft.Forward(time_buf, freq_buf);
- * // ... process freq_buf ...
- * fft.Inverse(freq_buf, time_buf);
+ * fft.Forward(time_buf, freq_buf); // Real → Frequency domain
+ * // ... spectral processing ...
+ * fft.Inverse(freq_buf, time_buf); // Frequency → Real domain
  * @endcode
  *
- * @note Designed for embedded DSP and real-time spectral processing
- *       on ARM Cortex-M microcontrollers using CMSIS-DSP.
+ * @ingroup FastDSP
+ * @defgroup FastFFT FFT and Transform Utilities
+ * @ingroup FastDSP
+ * @brief Real FFT (RFFT) wrappers and transform helpers for CMSIS-DSP.
+ *
+ * @note
+ * Designed for real-time spectral processing on ARM Cortex-M7/M4 microcontrollers
+ * using the optimized CMSIS-DSP library. It can be combined directly with
+ * `Fast_STFT` and `Fast_ISTFT` for full short-time spectral workflows.
  */
 
 #pragma once
@@ -39,48 +43,92 @@
 
 namespace dsp
 {
+
+    // -------------------------------------------------------------------------
+    // Fast_RFFT Class
+    // -------------------------------------------------------------------------
+
     /**
-     * @brief Wrapper around CMSIS-DSP fast real FFT instance.
-     * @tparam kFftSize The FFT size in samples (must be one of 32, 64, 128, 256, 512, 1024, 2048, 4096).
+     * @class Fast_RFFT
+     * @brief Simple C++ wrapper for CMSIS-DSP real FFT transforms.
      *
-     * Provides instance-based initialization, forward and inverse transforms,
-     * and helper functions for window generation and magnitude/phase conversion.
+     * @tparam kFftSize FFT size in samples (must be one of:
+     *         32, 64, 128, 256, 512, 1024, 2048, 4096).
+     *
+     * @details
+     * Provides fast real-to-complex and complex-to-real FFT transforms using
+     * the CMSIS-DSP optimized FFT routines. Supports seamless integration
+     * with windowing and spectral conversion functions.
+     *
+     * Each instance contains its own `arm_rfft_fast_instance_f32`, allowing
+     * multiple FFT objects with different sizes to coexist safely.
+     *
+     * The FFT operates in-place on single-precision floats (`float32_t`).
      */
     template <size_t kFftSize>
     class Fast_RFFT
     {
     public:
-        /** @brief Construct and initialize the RFFT instance. */
-        Fast_RFFT() { Init(); }
-
-        /** @brief Copy constructor (safe, shallow copy of CMSIS instance). */
-        Fast_RFFT(const Fast_RFFT &) = default;
-
-        /** @brief Assignment operator (safe, shallow copy of CMSIS instance). */
-        Fast_RFFT &operator=(const Fast_RFFT &) = default;
-
-        /** @brief FFT size constant (samples). */
+        /** @brief FFT size constant (number of time-domain samples). */
         static constexpr size_t FFT_SIZE = kFftSize;
 
-        /** @return FFT size in samples. */
+        /**
+         * @brief Construct and initialize the FFT instance.
+         *
+         * @details
+         * Automatically initializes the CMSIS-DSP FFT instance for the given
+         * compile-time FFT size. All supported sizes (32–4096) are handled via
+         * compile-time specialization.
+         */
+        Fast_RFFT() { Init(); }
+
+        /** @brief Copy constructor (safe shallow copy of CMSIS instance). */
+        Fast_RFFT(const Fast_RFFT &) = default;
+
+        /** @brief Assignment operator (safe shallow copy of CMSIS instance). */
+        Fast_RFFT &operator=(const Fast_RFFT &) = default;
+
+        // ---------------------------------------------------------------------
+        // Constants
+        // ---------------------------------------------------------------------
+
+        /** @return FFT size (number of input/output samples). */
         static constexpr size_t size() { return FFT_SIZE; }
 
-        /** @return Number of positive-frequency bins (`FFT_SIZE / 2 + 1`). */
+        /** @return Number of unique frequency bins (FFT_SIZE / 2 + 1). */
         static constexpr size_t NumBins() { return FFT_SIZE / 2 + 1; }
 
-        // --------------------------------------------------------------------
-        // Core Transform Operations
-        // --------------------------------------------------------------------
+        // ---------------------------------------------------------------------
+        // Transform Operations
+        // ---------------------------------------------------------------------
 
         /**
          * @brief Perform forward real-to-complex FFT.
+         * @ingroup FastFFT
          *
-         * @param input  Pointer to real-valued time-domain samples (size `FFT_SIZE`).
-         * @param output Pointer to FFT output buffer (packed complex, size `FFT_SIZE`).
+         * @param input  Pointer to real-valued time-domain samples (`FFT_SIZE`).
+         * @param output Pointer to frequency-domain buffer (`FFT_SIZE` floats).
          *
          * @details
-         * The output format is CMSIS-DSP interleaved complex packing:
-         * `[Re(0), Re(N/2), Re(1), Im(1), Re(2), Im(2), ...]`.
+         * Computes a forward real FFT using `arm_rfft_fast_f32()`. The output
+         * buffer is in **CMSIS packed complex format**:
+         * ```
+         * X[0]        = Re(DC)
+         * X[1]        = Re(Nyquist)
+         * X[2*k]      = Re(bin k)
+         * X[2*k + 1]  = Im(bin k)
+         * ```
+         *
+         * Use with `ToMagPhase()` (from `fast_spectral.h`) for magnitude/phase analysis.
+         *
+         * @note
+         * The function does not modify the input buffer.
+         *
+         * @par Example
+         * @code
+         * fft.Forward(time_signal, fft_out);
+         * dsp::ToMagPhase(fft_out, mags, phases, FFT_SIZE);
+         * @endcode
          */
         inline void Forward(const float *input, float *output) const noexcept
         {
@@ -89,9 +137,19 @@ namespace dsp
 
         /**
          * @brief Perform inverse complex-to-real FFT.
+         * @ingroup FastFFT
          *
-         * @param input  Pointer to packed complex frequency-domain buffer (size `FFT_SIZE`).
-         * @param output Pointer to real-valued time-domain buffer (size `FFT_SIZE`).
+         * @param input  Pointer to packed complex frequency-domain buffer.
+         * @param output Pointer to real-valued time-domain buffer (`FFT_SIZE`).
+         *
+         * @details
+         * Reconstructs a real-valued signal from its complex spectral representation.
+         * The input must follow the CMSIS-DSP RFFT format as described in `Forward()`.
+         *
+         * @note
+         * The output is unnormalized; if your processing chain requires amplitude
+         * matching, apply gain correction externally or use COLA normalization
+         * in `Fast_STFT` or `Fast_ISTFT`.
          */
         inline void Inverse(const float *input, float *output) const noexcept
         {
@@ -100,7 +158,17 @@ namespace dsp
 
         /**
          * @brief Zero out a buffer of length `FFT_SIZE`.
+         *
          * @param buf Pointer to buffer to clear.
+         *
+         * @details
+         * Convenience function to quickly clear a time-domain or frequency-domain
+         * buffer before reuse.
+         *
+         * @par Example
+         * @code
+         * fft.Zero(fft_out);
+         * @endcode
          */
         inline void Zero(float *buf) const noexcept
         {
@@ -109,15 +177,17 @@ namespace dsp
         }
 
     private:
-        /** @brief CMSIS-DSP FFT instance handle. */
+        /** @brief Internal CMSIS-DSP FFT instance. */
         arm_rfft_fast_instance_f32 inst_;
 
         /**
-         * @brief Initialize the CMSIS-DSP FFT instance for the selected size.
+         * @brief Initialize the CMSIS-DSP FFT instance.
          *
          * @details
-         * Uses compile-time dispatch to call the correct `arm_rfft_fast_init_<SIZE>_f32()`
-         * specialization. A static assertion ensures unsupported sizes fail at compile time.
+         * This uses compile-time dispatch to the correct
+         * `arm_rfft_fast_init_<SIZE>_f32()` function.
+         *
+         * @warning Unsupported FFT sizes will trigger a compile-time error.
          */
         inline void Init()
         {

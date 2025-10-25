@@ -1,34 +1,35 @@
 /**
- * @file fast_sfft.h
- * @brief Block-based Short-Time Fourier Transform (STFT) framework for real-time spectral processing.
+ * @file fast_stft.h
+ * @brief Short-Time Fourier Transform (STFT) framework for real-time spectral audio processing.
  *
  * @details
- * This header defines the `dsp::Fast_STFT` class template — a modular and efficient
- * structure for performing forward and inverse FFT operations using a block-based
- * overlap-add (COLA) approach. It supports both magnitude/phase and complex-domain
- * spectral processing, selectable at compile time.
+ * The `Fast_STFT` class template provides a modular, real-time implementation of the
+ * Short-Time Fourier Transform (STFT) suitable for embedded audio systems.
+ * It handles circular buffering, FFT-based spectral conversion, windowing,
+ * and overlap-add (COLA) reconstruction for continuous signal streaming.
  *
- * The framework handles circular buffering, windowing, and spectral reconstruction
- * for continuous, low-latency streaming audio or signal data. Derived classes can
- * override either `ProcessFrame()` (for magnitude/phase-domain effects) or
- * `ProcessFrameComplex()` (for direct complex-bin operations).
- *
- * **Key Features:**
+ * **Core Features:**
  * - Configurable FFT, hop, and block sizes with compile-time validation.
- * - Hann window initialization ensuring perfect COLA reconstruction.
- * - Multiple COLA normalization methods (Max, RMS, Linear — Linear used here).
- * - Circular buffering for real-time block-based signal streaming.
+ * - Integrated CMSIS-DSP real FFT (`Fast_RFFT`) for maximum speed.
+ * - Seamless window handling using `Fast_Window` utilities.
  * - Compile-time selectable spectral processing mode:
- *   - `ProcessingMode::MagPhase` — operates in magnitude/phase domain.
- *   - `ProcessingMode::Complex` — operates on complex FFT bins directly.
+ *   - `ProcessingMode::MagPhase` — process in magnitude/phase domain.
+ *   - `ProcessingMode::Complex` — process directly on complex FFT bins.
+ * - COLA normalization for perfect amplitude reconstruction.
  *
- * @tparam kFftSize        FFT size (must be a power of two).
- * @tparam kHopSize        Hop size between frames (must evenly divide FFT size).
- * @tparam kBlockSize      Number of samples per process block (must evenly divide hop size).
- * @tparam kProcessingMode Compile-time processing mode selection (`ProcessingMode::MagPhase` or `ProcessingMode::Complex`).
+ * **Use Cases:**
+ * - Real-time spectral effects (EQ, pitch shift, vocoding)
+ * - Spectral feature extraction
+ * - Phase vocoders or resynthesis engines
  *
- * @note Designed for embedded DSP targets such as ARM Cortex-M using CMSIS-DSP.
- *       Suitable for spectral effects, real-time transformations, and time-frequency analysis.
+ * @note
+ * Designed for high-performance embedded audio environments such as
+ * ARM Cortex-M7 (Daisy Seed, STM32H7) using CMSIS-DSP intrinsics.
+ *
+ * @ingroup FastDSP
+ * @defgroup FastSTFT Short-Time Fourier Transform (STFT)
+ * @ingroup FastDSP
+ * @brief Real-time block-based spectral processing framework.
  */
 
 #pragma once
@@ -40,20 +41,55 @@
 
 namespace dsp
 {
-    /** @brief Compile-time selectable spectral processing mode. */
+    /**
+     * @enum ProcessingMode
+     * @brief Selects which spectral representation the STFT will process.
+     *
+     * @details
+     * - `MagPhase`: Converts FFT data to magnitude/phase arrays for perceptually
+     *   meaningful operations (e.g., spectral shaping, morphing, dynamics).
+     * - `Complex`: Operates directly on the raw complex FFT bins for low-level
+     *   effects such as convolution, Hilbert-domain modulation, or custom phase manipulation.
+     */
     enum class ProcessingMode
     {
-        MagPhase, ///< Process using magnitude and phase arrays.
-        Complex   ///< Process using raw complex FFT bins.
+        MagPhase, ///< Process magnitude and phase separately.
+        Complex   ///< Process FFT complex bins directly.
     };
 
     /**
      * @class Fast_STFT
-     * @brief Template-based STFT processing framework for streaming spectral effects.
+     * @brief Real-time Short-Time Fourier Transform (STFT) processor template.
      *
-     * Provides a reusable and efficient pipeline for spectral audio or signal processing.
-     * Handles circular buffering, FFT windowing, overlap-add reconstruction, and
-     * spectral-domain processing via user overrides.
+     * @tparam kFftSize        FFT size in samples (must be power of two).
+     * @tparam kHopSize        Hop size between frames (must divide `FFT_SIZE`).
+     * @tparam kBlockSize      Block size of audio processing buffer (must divide `HOP_SIZE`).
+     * @tparam kProcessingMode Processing mode (`MagPhase` or `Complex`).
+     *
+     * @details
+     * Provides a reusable streaming STFT engine designed for low-latency
+     * spectral processing. Internally, it manages:
+     * - Circular I/O buffers
+     * - Windowing (via `Fast_Window`)
+     * - FFT and inverse FFT
+     * - Overlap-add synthesis with COLA normalization
+     *
+     * Users subclass this template and override one of:
+     * - `ProcessFrame()` — to modify magnitude/phase spectra
+     * - `ProcessFrameComplex()` — to modify complex bins directly
+     *
+     * @par Example
+     * @code
+     * class MySpectralEffect : public dsp::Fast_STFT<1024, 256, 64>
+     * {
+     * protected:
+     *     void ProcessFrame(float *mags, float *phases, size_t n_bins) override
+     *     {
+     *         for(size_t i = 0; i < n_bins; i++)
+     *             mags[i] *= 0.8f; // simple spectral attenuation
+     *     }
+     * };
+     * @endcode
      */
     template <size_t kFftSize,
               size_t kHopSize,
@@ -62,24 +98,24 @@ namespace dsp
     class Fast_STFT
     {
         static_assert(kFftSize % kHopSize == 0,
-                      "FFT_SIZE must be an integer multiple of HOP_SIZE (for COLA).");
+                      "FFT_SIZE must be an integer multiple of HOP_SIZE for COLA consistency.");
         static_assert(kHopSize % kBlockSize == 0,
-                      "HOP_SIZE must be an integer multiple of BLOCK_SIZE.");
+                      "HOP_SIZE must be an integer multiple of BLOCK_SIZE for block alignment.");
 
     public:
         // --------------------------------------------------------------------
-        // Compile-time constants
+        // Compile-Time Constants
         // --------------------------------------------------------------------
-        static constexpr size_t FFT_SIZE = kFftSize;
-        static constexpr size_t HOP_SIZE = kHopSize;
-        static constexpr size_t BLOCK_SIZE = kBlockSize;
-        static constexpr size_t N_BINS = FFT_SIZE / 2 + 1;
+        static constexpr size_t FFT_SIZE = kFftSize;       ///< FFT length in samples.
+        static constexpr size_t HOP_SIZE = kHopSize;       ///< Hop size between analysis frames.
+        static constexpr size_t BLOCK_SIZE = kBlockSize;   ///< Number of samples processed per audio callback.
+        static constexpr size_t N_BINS = FFT_SIZE / 2 + 1; ///< Number of FFT magnitude bins.
 
         /**
-         * @brief Construct and initialize the STFT framework.
+         * @brief Construct a new Fast_STFT object.
          *
-         * Initializes the Hann window and computes COLA normalization gain.
-         * Clears all internal circular buffers to ensure consistent startup state.
+         * Initializes window coefficients, COLA gain, and all internal buffers.
+         * By default, a Hann window is used with `alpha = 0.4`.
          */
         Fast_STFT()
             : write_idx_(0),
@@ -101,13 +137,18 @@ namespace dsp
         virtual ~Fast_STFT() = default;
 
         // --------------------------------------------------------------------
-        // Runtime Window Control
+        // Window Configuration
         // --------------------------------------------------------------------
 
         /**
-         * @brief Change window type and reinitialize window + COLA gain.
-         * @param type  New window type (Hann, Tukey, Gaussian, etc.)
-         * @param alpha Shape parameter (for Gaussian/Tukey)
+         * @brief Change the analysis/synthesis window at runtime.
+         *
+         * @param type  Window function (Hann, Hamming, Blackman, Gaussian, etc.)
+         * @param alpha Optional shape parameter (Tukey/Gaussian width)
+         *
+         * Reinitializes the window and recomputes COLA gain to maintain amplitude
+         * consistency. Matching analysis/synthesis windows are required for
+         * perfect reconstruction.
          */
         void SetWindowType(WindowType type, float alpha = 0.4f)
         {
@@ -120,7 +161,7 @@ namespace dsp
         /** @return Currently active window type. */
         WindowType GetWindowType() const { return window_type_; }
 
-        /** @return Current window alpha parameter. */
+        /** @return Current alpha shape parameter. */
         float GetWindowAlpha() const { return window_alpha_; }
 
         // --------------------------------------------------------------------
@@ -128,18 +169,23 @@ namespace dsp
         // --------------------------------------------------------------------
 
         /**
-         * @brief Process a single audio block.
+         * @brief Process one audio block (analysis + synthesis).
          *
-         * Pushes `BLOCK_SIZE` samples into the circular buffer, processes available frames
-         * once sufficient samples accumulate, and outputs the next `BLOCK_SIZE` samples
-         * after overlap-add synthesis.
+         * @param input  Input audio block (`BLOCK_SIZE` samples).
+         * @param output Output buffer (`BLOCK_SIZE` samples).
          *
-         * @param input  Pointer to input sample buffer (size `BLOCK_SIZE`).
-         * @param output Pointer to output buffer (size `BLOCK_SIZE`).
+         * @details
+         * The function:
+         *  1. Pushes samples into a circular buffer.
+         *  2. Triggers a new STFT frame when `HOP_SIZE` samples have accumulated.
+         *  3. Processes spectral data via user override.
+         *  4. Performs inverse FFT and overlap-add synthesis.
+         *
+         * This is designed for use inside a real-time audio callback loop.
          */
         void ProcessAudioBlock(const float *input, float *output)
         {
-            // --- Push new samples into circular buffer ---
+            // --- Push input samples into circular buffer ---
             for (size_t i = 0; i < BLOCK_SIZE; ++i)
             {
                 circ_buf_[write_idx_] = input[i];
@@ -148,14 +194,14 @@ namespace dsp
 
             accum_ += BLOCK_SIZE;
 
-            // --- Process frame when enough samples accumulated ---
+            // --- Process new frame when enough samples accumulated ---
             while (accum_ >= HOP_SIZE)
             {
                 RunFrame();
                 accum_ -= HOP_SIZE;
             }
 
-            // --- Output next BLOCK_SIZE samples ---
+            // --- Retrieve synthesized output ---
             for (size_t i = 0; i < BLOCK_SIZE; ++i)
             {
                 output[i] = overlap_buf_[read_idx_];
@@ -166,19 +212,19 @@ namespace dsp
 
     protected:
         // --------------------------------------------------------------------
-        // User-Overridable Hooks
+        // User-Overridable Processing Hooks
         // --------------------------------------------------------------------
 
         /**
-         * @brief User-overridable spectral processing function (magnitude/phase mode).
+         * @brief Override to implement spectral-domain effects (magnitude/phase mode).
          *
-         * Called after the forward FFT and conversion to magnitude and phase arrays.
-         * Override this function to implement spectral-domain effects such as EQ,
-         * phase vocoding, or amplitude manipulation.
+         * @param mags   Magnitude array (size `N_BINS`)
+         * @param phases Phase array (size `N_BINS`)
+         * @param n_bins Number of bins (FFT_SIZE / 2 + 1)
          *
-         * @param mags   Pointer to the array of magnitude values (size `n_bins`).
-         * @param phases Pointer to the array of phase values (size `n_bins`).
-         * @param n_bins Number of spectral bins (`FFT_SIZE / 2 + 1`).
+         * @note
+         * Only called when `ProcessingMode::MagPhase` is selected.
+         * Default implementation is a no-op.
          */
         virtual void ProcessFrame(float *mags, float *phases, size_t n_bins)
         {
@@ -188,17 +234,13 @@ namespace dsp
         }
 
         /**
-         * @brief User-overridable spectral processing function (complex mode).
+         * @brief Override to implement effects directly in the complex domain.
          *
-         * Called when `ProcessingMode::Complex` is selected at compile time.
-         * Operates directly on the interleaved complex FFT bins (real/imag pairs).
+         * @param fft_bins Pointer to FFT output buffer (interleaved Re/Im)
+         * @param n_bins   Number of spectral bins (`N_BINS`)
          *
-         * Override this for convolution, complex-domain filtering, or
-         * analytic-signal processing where magnitude/phase decomposition
-         * is unnecessary.
-         *
-         * @param fft_bins Pointer to the FFT output buffer (size `FFT_SIZE`).
-         * @param n_bins   Number of spectral bins (`FFT_SIZE / 2 + 1`).
+         * @note
+         * Only called when `ProcessingMode::Complex` is selected.
          */
         virtual void ProcessFrameComplex(float *fft_bins, size_t n_bins)
         {
@@ -208,31 +250,22 @@ namespace dsp
 
     private:
         // --------------------------------------------------------------------
-        // Windowing and Gain Compensation
+        // Internal Helpers: Window & COLA Gain
         // --------------------------------------------------------------------
 
-        /**
-         * @brief Initialize the Hann window used for analysis/synthesis.
-         *
-         * @details
-         * Generates a symmetric Hann window (`0.5 * (1 - cos(2πn/N))`)
-         * that satisfies the COLA condition for perfect overlap-add
-         * reconstruction given appropriate hop size.
-         */
+        /** @brief Initialize and fill window coefficients. */
         void InitWindow()
         {
-            dsp::MakeWindow(dsp::WindowType::Hann, window_, FFT_SIZE);
-            // No normalization — COLA gain handles amplitude correction.
+            dsp::MakeWindow(window_type_, window_, FFT_SIZE, window_alpha_);
         }
 
         /**
-         * @brief Compute linear-mean COLA normalization gain.
+         * @brief Compute constant overlap-add (COLA) gain correction.
          *
          * @details
-         * Ensures amplitude consistency across overlapping windows by
-         * computing the average overlap energy of squared window samples.
-         * This version uses linear mean normalization, which avoids buzz
-         * artifacts sometimes present in RMS-based methods.
+         * Ensures linear reconstruction gain when overlapping windows are summed.
+         * This method uses a *linear average* of squared window samples over the
+         * hop interval, providing smoother energy balance than RMS normalization.
          */
         void ComputeCOLAGain_Linear()
         {
@@ -258,19 +291,21 @@ namespace dsp
         }
 
         // --------------------------------------------------------------------
-        // FFT Frame Processing Core
+        // Internal Core: Frame Processing Cycle
         // --------------------------------------------------------------------
 
         /**
-         * @brief Perform a full STFT frame processing cycle.
+         * @brief Execute a full STFT frame cycle: analysis, processing, synthesis.
          *
-         * Executes the forward FFT, user-defined spectral processing
-         * (in magnitude/phase or complex domain), inverse FFT, and
-         * overlap-add synthesis.
+         * Steps:
+         *  1. Gather and window `FFT_SIZE` samples.
+         *  2. Perform forward FFT.
+         *  3. Run user-defined spectral processing.
+         *  4. Inverse FFT and overlap-add synthesis.
          */
         void RunFrame()
         {
-            // 1. Gather FFT_SIZE samples and apply window
+            // --- 1. Gather FFT_SIZE samples ---
             for (size_t i = 0; i < FFT_SIZE; ++i)
             {
                 size_t idx = (write_idx_ + i) % FFT_SIZE;
@@ -278,25 +313,25 @@ namespace dsp
             }
             dsp::ApplyWindow(window_, fft_in_, FFT_SIZE);
 
-            // 2. Forward FFT
+            // --- 2. Forward FFT ---
             fft_.Forward(fft_in_, fft_out_);
 
-            // 3. Compile-time spectral processing path
+            // --- 3. User-defined spectral processing ---
             if constexpr (kProcessingMode == ProcessingMode::MagPhase)
             {
                 dsp::ToMagPhase(fft_out_, mags_, phases_, FFT_SIZE);
                 ProcessFrame(mags_, phases_, N_BINS);
                 dsp::FromMagPhase(mags_, phases_, fft_out_, FFT_SIZE);
             }
-            else // ProcessingMode::Complex
+            else
             {
                 ProcessFrameComplex(fft_out_, N_BINS);
             }
 
-            // 4. Inverse FFT
+            // --- 4. Inverse FFT ---
             fft_.Inverse(fft_out_, fft_in_);
 
-            // 5. Overlap-add synthesis with COLA gain
+            // --- 5. Overlap-add synthesis ---
             for (size_t i = 0; i < FFT_SIZE; ++i)
             {
                 size_t idx = (read_idx_ + i) % FFT_SIZE;
@@ -304,27 +339,23 @@ namespace dsp
             }
         }
 
-    private:
         // --------------------------------------------------------------------
-        // Internal State
+        // Internal State Variables
         // --------------------------------------------------------------------
-        Fast_RFFT<FFT_SIZE> fft_; ///< Underlying real FFT processor.
-
-        float circ_buf_[FFT_SIZE];    ///< Circular input buffer.
-        float overlap_buf_[FFT_SIZE]; ///< Overlap-add buffer for output accumulation.
-        float window_[FFT_SIZE];      ///< Hann window coefficients.
-        float fft_in_[FFT_SIZE];      ///< Time-domain FFT input buffer.
-        float fft_out_[FFT_SIZE];     ///< Frequency-domain FFT output buffer.
+        Fast_RFFT<FFT_SIZE> fft_;     ///< FFT processor instance.
+        float circ_buf_[FFT_SIZE];    ///< Input circular buffer.
+        float overlap_buf_[FFT_SIZE]; ///< Output accumulation buffer.
+        float window_[FFT_SIZE];      ///< Analysis/synthesis window.
+        float fft_in_[FFT_SIZE];      ///< FFT input buffer.
+        float fft_out_[FFT_SIZE];     ///< FFT output buffer.
         float mags_[N_BINS];          ///< Magnitude spectrum buffer.
         float phases_[N_BINS];        ///< Phase spectrum buffer.
-
-        size_t write_idx_; ///< Write index in circular buffer.
-        size_t read_idx_;  ///< Read index in overlap buffer.
-        size_t accum_;     ///< Accumulated block count toward next FFT frame.
-        float cola_gain_;  ///< Normalization gain for COLA synthesis.
-
-        WindowType window_type_;
-        float window_alpha_;
+        size_t write_idx_;            ///< Write index for circular buffer.
+        size_t read_idx_;             ///< Read index for output buffer.
+        size_t accum_;                ///< Number of accumulated samples toward next frame.
+        float cola_gain_;             ///< Constant overlap-add normalization factor.
+        WindowType window_type_;      ///< Current window function type.
+        float window_alpha_;          ///< Window shape parameter.
     };
 
 } // namespace dsp

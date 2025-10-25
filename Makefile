@@ -2,16 +2,17 @@
 TARGET = SFFT_TestBed
 
 # Sources
-CPP_SOURCES = ex_stft_mono.cpp
+# CPP_SOURCES = ex_stft_mono.cpp
 # CPP_SOURCES = ex_stft_stereo.cpp
+CPP_SOURCES = ex_istft_simple.cpp
 
 # Path to DaisySP and LibDaisy 
-DAISYSP_DIR ?= ./lib/DaisySP
-LIBDAISY_DIR ?= ./lib/libDaisy
+DAISYSP_DIR ?= ../lib/DaisySP
+LIBDAISY_DIR ?= ../lib/libDaisy
 
 # Path to CMSIS-DSP and CMSIS-Core
-CMSIS_PATH = ./lib/CMSIS-DSP/
-CMSIS_CORE_PATH = ./lib/CMSIS_5/CMSIS/Core
+CMSIS_PATH = ../lib/CMSIS-DSP/
+CMSIS_CORE_PATH = ../lib/CMSIS_5/CMSIS/Core
 
 # Include the main source files for each function category
 CMSIS_SOURCES = $(CMSIS_PATH)/Source/TransformFunctions/TransformFunctions.c \
@@ -19,9 +20,6 @@ CMSIS_SOURCES = $(CMSIS_PATH)/Source/TransformFunctions/TransformFunctions.c \
                 $(CMSIS_PATH)/Source/BasicMathFunctions/BasicMathFunctions.c \
                 $(CMSIS_PATH)/Source/SupportFunctions/SupportFunctions.c \
                 $(CMSIS_PATH)/Source/FastMathFunctions/FastMathFunctions.c \
-                $(CMSIS_PATH)/Source/FilteringFunctions/FilteringFunctions.c \
-                $(CMSIS_PATH)/Source/StatisticsFunctions/StatisticsFunctions.c \
-                $(CMSIS_PATH)/Source/ControllerFunctions/ControllerFunctions.c \
                 $(CMSIS_PATH)/Source/ComplexMathFunctions/ComplexMathFunctions.c \
 
 C_SOURCES = $(CMSIS_SOURCES)
