@@ -2,8 +2,8 @@
 TARGET = SFFT_TestBed
 
 # Sources
-CPP_SOURCES = main_mono.cpp
-# CPP_SOURCES = main_stereo.cpp
+CPP_SOURCES = ex_stft_mono.cpp
+# CPP_SOURCES = ex_stft_stereo.cpp
 
 # Path to DaisySP and LibDaisy 
 DAISYSP_DIR ?= ./lib/DaisySP
