@@ -33,7 +33,9 @@
 
 #pragma once
 #include "fast_rfft.h"
+#include "fast_window.h"
 #include "arm_math.h"
+#include <cstring>
 
 namespace dsp
 {
@@ -190,9 +192,8 @@ namespace dsp
          */
         void InitWindow()
         {
-            const float N = static_cast<float>(FFT_SIZE - 1);
-            for (size_t i = 0; i < FFT_SIZE; ++i)
-                window_[i] = 0.5f * (1.0f - arm_cos_f32(2.0f * PI * i / N));
+            dsp::MakeWindow(dsp::WindowType::Hann, window_, FFT_SIZE);
+            // No normalization — COLA gain handles amplitude correction.
         }
 
         /**
@@ -244,8 +245,9 @@ namespace dsp
             for (size_t i = 0; i < FFT_SIZE; ++i)
             {
                 size_t idx = (write_idx_ + i) % FFT_SIZE;
-                fft_in_[i] = circ_buf_[idx] * window_[i];
+                fft_in_[i] = circ_buf_[idx];
             }
+            dsp::ApplyWindow(window_, fft_in_, FFT_SIZE);
 
             // 2. Forward FFT
             fft_.Forward(fft_in_, fft_out_);

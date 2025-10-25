@@ -1,5 +1,5 @@
 /**
- * @file fast_rfft.h
+ * @file Fast_RFFT.hpp
  * @brief Lightweight, copyable wrapper for CMSIS-DSP real FFT (RFFT) transforms.
  *
  * @details
@@ -106,110 +106,6 @@ namespace dsp
         {
             for (size_t i = 0; i < FFT_SIZE; ++i)
                 buf[i] = 0.0f;
-        }
-
-        // --------------------------------------------------------------------
-        // Window Utilities
-        // --------------------------------------------------------------------
-
-        /** @brief Supported window function types. */
-        enum class WindowType
-        {
-            Hann,     ///< Cosine-squared Hann window.
-            Hamming,  ///< Hamming window (slightly higher sidelobes).
-            Blackman, ///< Blackman window (very low sidelobes).
-            Gaussian  ///< Gaussian window (requires `alpha` parameter).
-        };
-
-        /**
-         * @brief Generate a window function of the specified type.
-         * @param type   Window function type.
-         * @param window Output buffer for generated window (size `FFT_SIZE`).
-         * @param alpha  Gaussian width parameter (used only for `WindowType::Gaussian`).
-         *
-         * @details
-         * For Gaussian windows, `alpha` controls the standard deviation.
-         * Typical value: 0.4 (default).
-         */
-        static void MakeWindow(WindowType type, float *window, float alpha = 0.4f)
-        {
-            const float N = static_cast<float>(FFT_SIZE - 1);
-
-            switch (type)
-            {
-            case WindowType::Hann:
-                for (size_t i = 0; i < FFT_SIZE; ++i)
-                    window[i] = 0.5f * (1.0f - arm_cos_f32(2.0f * PI * i / N));
-                break;
-
-            case WindowType::Hamming:
-                for (size_t i = 0; i < FFT_SIZE; ++i)
-                    window[i] = 0.54f - 0.46f * arm_cos_f32(2.0f * PI * i / N);
-                break;
-
-            case WindowType::Blackman:
-                for (size_t i = 0; i < FFT_SIZE; ++i)
-                    window[i] = 0.42f - 0.5f * arm_cos_f32(2.0f * PI * i / N) +
-                                0.08f * arm_cos_f32(4.0f * PI * i / N);
-                break;
-
-            case WindowType::Gaussian:
-            {
-                const float sigma = alpha * (FFT_SIZE - 1) / 2.0f;
-                const float denom = 2.0f * sigma * sigma;
-                const float mid = (FFT_SIZE - 1) * 0.5f;
-                for (size_t i = 0; i < FFT_SIZE; ++i)
-                {
-                    const float n = static_cast<float>(i) - mid;
-                    window[i] = expf(-0.5f * (n * n) / denom);
-                }
-            }
-            break;
-            }
-        }
-
-        /**
-         * @brief Apply a window in-place to a signal buffer.
-         * @param window Pointer to the window coefficients (size `FFT_SIZE`).
-         * @param data   Pointer to signal data (modified in-place).
-         */
-        static void ApplyWindow(const float *window, float *data)
-        {
-            arm_mult_f32(data, window, data, FFT_SIZE);
-        }
-
-        /** @brief Normalization modes for window scaling. */
-        enum class NormType
-        {
-            Sum, ///< Normalize by total sum of coefficients.
-            RMS  ///< Normalize by root-mean-square energy.
-        };
-
-        /**
-         * @brief Normalize a window by sum or RMS.
-         * @param window Pointer to window coefficients (modified in-place).
-         * @param type   Normalization method (`Sum` or `RMS`).
-         */
-        static void NormalizeWindow(float *window, NormType type)
-        {
-            float sum = 0.0f, rms = 0.0f;
-            for (uint16_t i = 0; i < FFT_SIZE; ++i)
-            {
-                sum += window[i];
-                rms += window[i] * window[i];
-            }
-
-            if (type == NormType::Sum)
-            {
-                const float gain = 1.0f / sum;
-                arm_scale_f32(window, gain, window, FFT_SIZE);
-            }
-            else if (type == NormType::RMS)
-            {
-                rms = sqrtf(rms / FFT_SIZE);
-                const float gain = 1.0f / rms;
-                arm_scale_f32(window, gain, window, FFT_SIZE);
-            }
         }
 
         // --------------------------------------------------------------------
