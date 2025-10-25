@@ -82,7 +82,12 @@ namespace dsp
          * Clears all internal circular buffers to ensure consistent startup state.
          */
         Fast_STFT()
-            : write_idx_(0), read_idx_(0), accum_(0), cola_gain_(1.0f)
+            : write_idx_(0),
+              read_idx_(0),
+              accum_(0),
+              cola_gain_(1.0f),
+              window_type_(WindowType::Hann),
+              window_alpha_(0.4f)
         {
             InitWindow();
             ComputeCOLAGain_Linear();
@@ -94,6 +99,29 @@ namespace dsp
         }
 
         virtual ~Fast_STFT() = default;
+
+        // --------------------------------------------------------------------
+        // Runtime Window Control
+        // --------------------------------------------------------------------
+
+        /**
+         * @brief Change window type and reinitialize window + COLA gain.
+         * @param type  New window type (Hann, Tukey, Gaussian, etc.)
+         * @param alpha Shape parameter (for Gaussian/Tukey)
+         */
+        void SetWindowType(WindowType type, float alpha = 0.4f)
+        {
+            window_type_ = type;
+            window_alpha_ = alpha;
+            InitWindow();
+            ComputeCOLAGain_Linear();
+        }
+
+        /** @return Currently active window type. */
+        WindowType GetWindowType() const { return window_type_; }
+
+        /** @return Current window alpha parameter. */
+        float GetWindowAlpha() const { return window_alpha_; }
 
         // --------------------------------------------------------------------
         // Audio Block Processing
@@ -294,6 +322,9 @@ namespace dsp
         size_t read_idx_;  ///< Read index in overlap buffer.
         size_t accum_;     ///< Accumulated block count toward next FFT frame.
         float cola_gain_;  ///< Normalization gain for COLA synthesis.
+
+        WindowType window_type_;
+        float window_alpha_;
     };
 
 } // namespace dsp

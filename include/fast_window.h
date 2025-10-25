@@ -3,13 +3,14 @@
  * @brief Window generation, normalization, and application utilities for DSP.
  *
  * @details
- * Provides reusable windowing functions for spectral processing.
- * Includes Hann, Hamming, Blackman, and Gaussian windows, with
- * optional normalization and in-place application utilities.
+ * Provides reusable windowing functions for spectral audio processing.
+ * Includes Hann, Hamming, Blackman, Gaussian, and Tukey (tapered cosine) windows.
+ * Uses CMSIS-DSP math functions for efficient computation.
+ *
+ * Designed for real-time STFT and spectral effects on ARM Cortex-M targets.
  */
 
 #pragma once
-#include <cmath>
 #include <cstddef>
 #include "arm_math.h"
 
@@ -18,10 +19,11 @@ namespace dsp
     /** @brief Supported window function types. */
     enum class WindowType
     {
-        Hann,
-        Hamming,
-        Blackman,
-        Gaussian
+        Hann,     ///< Smooth cosine-squared window (perfect COLA).
+        Hamming,  ///< Slightly brighter variant of Hann.
+        Blackman, ///< Very smooth, lower side lobes.
+        Gaussian, ///< Symmetric Gaussian window, softest tone.
+        Tukey     ///< Tapered cosine with adjustable sharpness (alpha).
     };
 
     /** @brief Normalization modes for window scaling. */
@@ -37,7 +39,9 @@ namespace dsp
      * @param type   Window function type.
      * @param window Output buffer (size = `size`).
      * @param size   Number of samples.
-     * @param alpha  Gaussian width parameter (only used for Gaussian windows).
+     * @param alpha  Shape parameter:
+     *               - For Gaussian: width control (0.3–0.6 typical)
+     *               - For Tukey: taper ratio (0–1, 0=rectangular, 1=Hann)
      */
     inline void MakeWindow(WindowType type, float *window, size_t size, float alpha = 0.4f)
     {
@@ -71,8 +75,48 @@ namespace dsp
                 const float n = static_cast<float>(i) - mid;
                 window[i] = expf(-0.5f * (n * n) / denom);
             }
-            break;
         }
+        break;
+
+        case WindowType::Tukey:
+        {
+            // Alpha defines proportion of cosine taper (0=rectangular, 1=Hann)
+            if (alpha <= 0.0f)
+            {
+                for (size_t i = 0; i < size; ++i)
+                    window[i] = 1.0f;
+            }
+            else if (alpha >= 1.0f)
+            {
+                for (size_t i = 0; i < size; ++i)
+                    window[i] = 0.5f * (1.0f - arm_cos_f32(2.0f * PI * i / N));
+            }
+            else
+            {
+                const size_t taper = static_cast<size_t>(alpha * N / 2.0f);
+                for (size_t i = 0; i < size; ++i)
+                {
+                    if (i < taper)
+                    {
+                        // Rising cosine
+                        float x = static_cast<float>(i) / taper;
+                        window[i] = 0.5f * (1.0f - arm_cos_f32(PI * x));
+                    }
+                    else if (i > N - taper)
+                    {
+                        // Falling cosine
+                        float x = (static_cast<float>(i) - N + taper) / taper;
+                        window[i] = 0.5f * (1.0f + arm_cos_f32(PI * x));
+                    }
+                    else
+                    {
+                        // Flat section
+                        window[i] = 1.0f;
+                    }
+                }
+            }
+        }
+        break;
         }
     }
 
