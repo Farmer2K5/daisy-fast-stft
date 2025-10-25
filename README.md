@@ -10,8 +10,6 @@ It was developed primarily for research and learning on the Daisy Seed, and whil
 
 This code should be viewed as a foundation for exploration — not a finished product. You are encouraged to modify, measure, and validate it for your own purposes, and to share improvements or findings with the community.
 
----
-
 ## Highlights
 
 - **Designed for the Daisy Seed** (Cortex-M7 @ 480 MHz Boost Mode)
@@ -21,8 +19,6 @@ This code should be viewed as a foundation for exploration — not a finished pr
 - **Spectral conversions and analysis** for packed FFT data
 - **Feature extraction**: centroid, flux, rolloff, spread, flatness, and more
 - Clean integration with **CMSIS-DSP (`arm_math.h`)**
-
----
 
 ## Module Overview
 
@@ -74,8 +70,6 @@ The STFT module supports **two compile-time modes**:
 
 See [`Processing_Modes.md`](./Processing_Modes.md) for futher details.
 
----
-
 ## Practical Examples
 
 ### 1️⃣ Real-Time Spectral Effect
@@ -104,8 +98,6 @@ void AudioCallback(float** in, float** out, size_t size) {
 **Concept:** Subclass `Fast_STFT` to process magnitude and phase (perceptual domain).  
 **Result:** Smooth high-frequency roll-off with natural reconstruction.
 
----
-
 ### 2️⃣ Complex-Domain Phase Modulator
 ```cpp
 class PhaseTilt : public Fast_STFT<1024, 256, 64, ProcessingMode::Complex> {
@@ -125,8 +117,6 @@ public:
 ```
 **Concept:** Operates directly on complex bins to apply progressive phase skew.  
 **Result:** Produces a “warbling” or “bent phase” spectral effect.
-
----
 
 ### 3️⃣ Offline Resynthesis with ISTFT
 ```cpp
@@ -150,8 +140,6 @@ void ReconstructFromFrames(float** fft_frames, size_t num_frames, float* output)
 **Concept:** Demonstrates frame-based reconstruction from spectral data.  
 **Use Case:** Ideal for resynthesis after spectral modification or machine-learning processing.
 
----
-
 ### 4️⃣ Spectral Analysis and Feature Extraction
 ```cpp
 #include "fast_dsp.h"
@@ -172,8 +160,6 @@ float flatness = dsp::spectral::features::SpectralFlatness(mags, N_BINS);
 **Concept:** Compute scalar spectral descriptors for feature tracking or visualization.  
 **Result:** Produces normalized analysis metrics useful for adaptive DSP or ML inputs.
 
----
-
 ### 5️⃣ Spectral Morphing Using Ops
 ```cpp
 #include "fast_dsp.h"
@@ -190,27 +176,19 @@ dsp::spectral::ops::WeightedMix(fftA, fftB, mixed, 0.5f, FFT_SIZE);
 **Concept:** Blends two FFT frames’ magnitude and phase smoothly.  
 **Result:** Enables cross-synthesis or morphing between sound sources.
 
----
-
 ## Performance
  
 Typical throughput and profiling data are summarized in [Performance.md](Performance.md).
 
----
-
 ## Developer Notes
 
 Design rationale, CMSIS-DSP nuances, and FFT behavior insights are provided in [Notes.md](Notes.md).
-
----
 
 ## Dependencies
 
 - [Electrosmith DaisySP](https://github.com/electro-smith/DaisySP)
 - [CMSIS-DSP](https://arm-software.github.io/CMSIS_5/DSP/html/index.html)
 - ARM Cortex-M toolchain (GCC or clang)
-
----
 
 ## License & Acknowledgments
 
