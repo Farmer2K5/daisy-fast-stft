@@ -29,7 +29,8 @@ C_SOURCES = $(CMSIS_SOURCES)
 # Location of Hardware Support File within the SDK
 C_INCLUDES += -I$(CMSIS_PATH)/Include \
               -I$(CMSIS_PATH)/PrivateInclude \
-              -I$(CMSIS_CORE_PATH)/Include
+              -I$(CMSIS_CORE_PATH)/Include \
+              -I./include
 
 
 # (optional) Includes DaisySP-LGPL (like ReverbSc, etc.) source files within project.
