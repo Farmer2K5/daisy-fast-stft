@@ -32,10 +32,10 @@
  */
 
 #pragma once
+#include <cstring>
 #include "fast_rfft.h"
 #include "fast_window.h"
 #include "arm_math.h"
-#include <cstring>
 
 namespace dsp
 {
