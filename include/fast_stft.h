@@ -34,6 +34,7 @@
 #pragma once
 #include <cstring>
 #include "arm_math.h"
+#include "fast_dsp_compiler.h"
 #include "fast_rfft.h"
 #include "fast_spectral.h"
 #include "fast_window.h"
@@ -102,6 +103,10 @@ namespace dsp
         static_assert(kHopSize % kBlockSize == 0,
                       "HOP_SIZE must be an integer multiple of BLOCK_SIZE for block alignment.");
 
+        // NEW: ensure all buffer sizes are powers of two for bitmask wrapping
+        static_assert((kFftSize & (kFftSize - 1)) == 0,
+                      "FFT_SIZE must be a power of two when using bitmask wrapping.");
+
     public:
         // --------------------------------------------------------------------
         // Compile-Time Constants
@@ -130,8 +135,8 @@ namespace dsp
 
             memset(circ_buf_, 0, sizeof(circ_buf_));
             memset(overlap_buf_, 0, sizeof(overlap_buf_));
-            memset(fft_in_, 0, sizeof(fft_in_));
-            memset(fft_out_, 0, sizeof(fft_out_));
+            // memset(fft_in_, 0, sizeof(fft_in_));
+            // memset(fft_out_, 0, sizeof(fft_out_));
         }
 
         virtual ~Fast_STFT() = default;
@@ -150,8 +155,10 @@ namespace dsp
          * consistency. Matching analysis/synthesis windows are required for
          * perfect reconstruction.
          */
-        void SetWindowType(WindowType type, float alpha = 0.4f)
+        FASTDSP_FORCE_INLINE void SetWindowType(WindowType type, float alpha = 0.4f)
         {
+            if (type == window_type_ && alpha == window_alpha_)
+                return; // skip recomputation if unchanged
             window_type_ = type;
             window_alpha_ = alpha;
             InitWindow();
@@ -183,13 +190,13 @@ namespace dsp
          *
          * This is designed for use inside a real-time audio callback loop.
          */
-        void ProcessAudioBlock(const float *input, float *output)
+        FASTDSP_FORCE_INLINE void ProcessAudioBlock(const float *input, float *output)
         {
             // --- Push input samples into circular buffer ---
             for (size_t i = 0; i < BLOCK_SIZE; ++i)
             {
                 circ_buf_[write_idx_] = input[i];
-                write_idx_ = (write_idx_ + 1) % FFT_SIZE;
+                write_idx_ = (write_idx_ + 1) & (FFT_SIZE - 1);
             }
 
             accum_ += BLOCK_SIZE;
@@ -206,7 +213,7 @@ namespace dsp
             {
                 output[i] = overlap_buf_[read_idx_];
                 overlap_buf_[read_idx_] = 0.0f;
-                read_idx_ = (read_idx_ + 1) % FFT_SIZE;
+                read_idx_ = (read_idx_ + 1) & (FFT_SIZE - 1);
             }
         }
 
@@ -249,12 +256,16 @@ namespace dsp
         }
 
     private:
+        // static constexpr size_t FFT_MASK = FFT_SIZE - 1;
+        // static constexpr size_t HOP_MASK = HOP_SIZE - 1;
+        // static constexpr size_t BLOCK_MASK = BLOCK_SIZE - 1;
+
         // --------------------------------------------------------------------
         // Internal Helpers: Window & COLA Gain
         // --------------------------------------------------------------------
 
         /** @brief Initialize and fill window coefficients. */
-        void InitWindow()
+        FASTDSP_FORCE_INLINE void InitWindow()
         {
             dsp::MakeWindow(window_type_, window_, FFT_SIZE, window_alpha_);
         }
@@ -267,7 +278,7 @@ namespace dsp
          * This method uses a *linear average* of squared window samples over the
          * hop interval, providing smoother energy balance than RMS normalization.
          */
-        void ComputeCOLAGain_Linear()
+        FASTDSP_FORCE_INLINE void ComputeCOLAGain_Linear()
         {
             const size_t overlap = FFT_SIZE / HOP_SIZE;
             float accum[HOP_SIZE] = {0.0f};
@@ -308,10 +319,11 @@ namespace dsp
             // --- 1. Gather FFT_SIZE samples ---
             for (size_t i = 0; i < FFT_SIZE; ++i)
             {
-                size_t idx = (write_idx_ + i) % FFT_SIZE;
-                fft_in_[i] = circ_buf_[idx];
+                size_t idx = (write_idx_ + i) & (FFT_SIZE - 1);
+                // fft_in_[i] = circ_buf_[idx];
+                fft_in_[i] = circ_buf_[idx] * window_[i]; // merged gather + window
             }
-            dsp::ApplyWindow(window_, fft_in_, FFT_SIZE);
+            // dsp::ApplyWindow(window_, fft_in_, FFT_SIZE);
 
             // --- 2. Forward FFT ---
             fft_.Forward(fft_in_, fft_out_);
@@ -334,7 +346,7 @@ namespace dsp
             // --- 5. Overlap-add synthesis ---
             for (size_t i = 0; i < FFT_SIZE; ++i)
             {
-                size_t idx = (read_idx_ + i) % FFT_SIZE;
+                size_t idx = (read_idx_ + i) & (FFT_SIZE - 1);
                 overlap_buf_[idx] += fft_in_[i] * window_[i] * cola_gain_;
             }
         }

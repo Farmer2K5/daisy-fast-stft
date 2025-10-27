@@ -64,6 +64,13 @@ namespace dsp
     template <size_t kFftSize, size_t kHopSize>
     class Fast_ISTFT
     {
+        static_assert(kFftSize % kHopSize == 0,
+                      "FFT_SIZE must be an integer multiple of HOP_SIZE for COLA consistency.");
+
+        // NEW: ensure all buffer sizes are powers of two for bitmask wrapping
+        static_assert((kFftSize & (kFftSize - 1)) == 0,
+                      "FFT_SIZE must be a power of two when using bitmask wrapping.");
+
     public:
         /** @brief FFT size in samples. */
         static constexpr size_t FFT_SIZE = kFftSize;
@@ -162,19 +169,19 @@ namespace dsp
             // (3) Overlap-add accumulation into circular buffer
             for (size_t i = 0; i < FFT_SIZE; ++i)
             {
-                size_t idx = (read_pos_ + i) % FFT_SIZE;
+                size_t idx = (read_pos_ + i) & (FFT_SIZE - 1);
                 overlap_buf_[idx] += time_buf_[i] * cola_gain_;
             }
 
             // (4) Output hop-sized segment
             for (size_t i = 0; i < HOP_SIZE; ++i)
             {
-                output[i] = overlap_buf_[(read_pos_ + i) % FFT_SIZE];
-                overlap_buf_[(read_pos_ + i) % FFT_SIZE] = 0.0f;
+                output[i] = overlap_buf_[(read_pos_ + i) & (FFT_SIZE - 1)];
+                overlap_buf_[(read_pos_ + i) & (FFT_SIZE - 1)] = 0.0f;
             }
 
             // (5) Advance read position
-            read_pos_ = (read_pos_ + HOP_SIZE) % FFT_SIZE;
+            read_pos_ = (read_pos_ + HOP_SIZE) & (FFT_SIZE - 1);
         }
 
     private:
