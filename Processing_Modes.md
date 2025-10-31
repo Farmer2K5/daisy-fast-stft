@@ -1,6 +1,6 @@
 # Processing Mode Comparison: MagPhase vs. Complex
 
-This document explains when and why to use each spectral processing mode in the `dsp::Fast_STFT`. It covers conceptual differences, design tradeoffs, and practical examples for DSP applications on the Daisy Seed.
+This document explains when and why to use each spectral processing mode in the `daisyfarm::Fast_STFT`. It covers conceptual differences, design tradeoffs, and practical examples for DSP applications on the Daisy Seed.
 
 ---
 

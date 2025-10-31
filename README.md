@@ -73,9 +73,10 @@ See [`Processing_Modes.md`](./Processing_Modes.md) for futher details.
 ## Practical Examples
 
 ### 1️⃣ Real-Time Spectral Effect
+
 ```cpp
 #include "fast_dsp.h"
-using namespace dsp;
+using namespace daisyfarm;
 
 // Simple high-frequency damping effect
 class HighCut : public Fast_STFT<1024, 256, 64, ProcessingMode::MagPhase> {
@@ -95,10 +96,12 @@ void AudioCallback(float** in, float** out, size_t size) {
     stft.ProcessAudioBlock(in[0], out[0]);
 }
 ```
+
 **Concept:** Subclass `Fast_STFT` to process magnitude and phase (perceptual domain).  
 **Result:** Smooth high-frequency roll-off with natural reconstruction.
 
 ### 2️⃣ Complex-Domain Phase Modulator
+
 ```cpp
 class PhaseTilt : public Fast_STFT<1024, 256, 64, ProcessingMode::Complex> {
 public:
@@ -115,17 +118,19 @@ public:
     }
 };
 ```
+
 **Concept:** Operates directly on complex bins to apply progressive phase skew.  
 **Result:** Produces a “warbling” or “bent phase” spectral effect.
 
 ### 3️⃣ Offline Resynthesis with ISTFT
+
 ```cpp
 #include "fast_dsp.h"
 
 constexpr size_t FFT_SIZE = 1024;
 constexpr size_t HOP_SIZE = 256;
 
-dsp::Fast_ISTFT<FFT_SIZE, HOP_SIZE> istft;
+daisyfarm::Fast_ISTFT<FFT_SIZE, HOP_SIZE> istft;
 
 void ReconstructFromFrames(float** fft_frames, size_t num_frames, float* output) {
     float hop[HOP_SIZE];
@@ -137,10 +142,12 @@ void ReconstructFromFrames(float** fft_frames, size_t num_frames, float* output)
     }
 }
 ```
+
 **Concept:** Demonstrates frame-based reconstruction from spectral data.  
 **Use Case:** Ideal for resynthesis after spectral modification or machine-learning processing.
 
 ### 4️⃣ Spectral Analysis and Feature Extraction
+
 ```cpp
 #include "fast_dsp.h"
 
@@ -151,16 +158,18 @@ float mags[N_BINS];
 float freqs[N_BINS];
 float prev_mags[N_BINS];
 
-dsp::spectral::ComputeFrequencyBins(freqs, FFT_SIZE, 48000.0f);
+daisyfarm::ComputeFrequencyBins(freqs, FFT_SIZE, 48000.0f);
 
-float centroid = dsp::spectral::features::SpectralCentroid(mags, freqs, N_BINS);
-float flux     = dsp::spectral::features::SpectralFlux(mags, prev_mags, N_BINS);
-float flatness = dsp::spectral::features::SpectralFlatness(mags, N_BINS);
+float centroid = daisyfarm::spectral::features::SpectralCentroid(mags, freqs, N_BINS);
+float flux     = daisyfarm::spectral::features::SpectralFlux(mags, prev_mags, N_BINS);
+float flatness = daisyfarm::spectral::features::SpectralFlatness(mags, N_BINS);
 ```
+
 **Concept:** Compute scalar spectral descriptors for feature tracking or visualization.  
 **Result:** Produces normalized analysis metrics useful for adaptive DSP or ML inputs.
 
 ### 5️⃣ Spectral Morphing Using Ops
+
 ```cpp
 #include "fast_dsp.h"
 
@@ -171,13 +180,14 @@ float fftA[FFT_SIZE]; // Spectrum A
 float fftB[FFT_SIZE]; // Spectrum B
 float mixed[FFT_SIZE];
 
-dsp::spectral::ops::WeightedMix(fftA, fftB, mixed, 0.5f, FFT_SIZE);
+daisyfarm::WeightedMix(fftA, fftB, mixed, 0.5f, FFT_SIZE);
 ```
+
 **Concept:** Blends two FFT frames’ magnitude and phase smoothly.  
 **Result:** Enables cross-synthesis or morphing between sound sources.
 
 ## Performance
- 
+
 Typical throughput and profiling data are summarized in [Performance.md](Performance.md).
 
 ## Developer Notes
