@@ -87,7 +87,7 @@
 // -----------------------------------------------------------------------------
 // Global namespace
 // -----------------------------------------------------------------------------
-namespace dsp
+namespace daisyfarm
 {
     /**
      * @brief FastDSP library version (semantic).
@@ -102,6 +102,6 @@ namespace dsp
     {
         printf("FastDSP v%s — Lightweight DSP Framework for CMSIS-DSP\n", version);
     }
-} // namespace dsp
+} // namespace daisyfarm
 
 /* EOF */

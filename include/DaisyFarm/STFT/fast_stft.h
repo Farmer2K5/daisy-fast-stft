@@ -34,12 +34,11 @@
 #pragma once
 #include <cstring>
 #include "arm_math.h"
-#include "fast_dsp_compiler.h"
 #include "fast_rfft.h"
 #include "fast_spectral.h"
 #include "fast_window.h"
 
-namespace dsp
+namespace daisyfarm
 {
 
     /**
@@ -81,7 +80,7 @@ namespace dsp
      *
      * @par Example
      * @code
-     * class MySpectralEffect : public dsp::Fast_STFT<1024, 256, 64>
+     * class MySpectralEffect : public daisyfarm::Fast_STFT<1024, 256, 64>
      * {
      * protected:
      *     void ProcessFrame(float *mags, float *phases, size_t n_bins) override
@@ -155,7 +154,7 @@ namespace dsp
          * consistency. Matching analysis/synthesis windows are required for
          * perfect reconstruction.
          */
-        FASTDSP_FORCE_INLINE void SetWindowType(WindowType type, float alpha = 0.4f)
+        inline __attribute__((always_inline)) void SetWindowType(WindowType type, float alpha = 0.4f)
         {
             if (type == window_type_ && alpha == window_alpha_)
                 return; // skip recomputation if unchanged
@@ -190,7 +189,7 @@ namespace dsp
          *
          * This is designed for use inside a real-time audio callback loop.
          */
-        FASTDSP_FORCE_INLINE void ProcessAudioBlock(const float *input, float *output)
+        inline __attribute__((always_inline)) void ProcessAudioBlock(const float *input, float *output)
         {
             // --- Push input samples into circular buffer ---
             for (size_t i = 0; i < BLOCK_SIZE; ++i)
@@ -256,18 +255,14 @@ namespace dsp
         }
 
     private:
-        // static constexpr size_t FFT_MASK = FFT_SIZE - 1;
-        // static constexpr size_t HOP_MASK = HOP_SIZE - 1;
-        // static constexpr size_t BLOCK_MASK = BLOCK_SIZE - 1;
-
         // --------------------------------------------------------------------
         // Internal Helpers: Window & COLA Gain
         // --------------------------------------------------------------------
 
         /** @brief Initialize and fill window coefficients. */
-        FASTDSP_FORCE_INLINE void InitWindow()
+        inline __attribute__((always_inline)) void InitWindow()
         {
-            dsp::MakeWindow(window_type_, window_, FFT_SIZE, window_alpha_);
+            daisyfarm::MakeWindow(window_type_, window_, FFT_SIZE, window_alpha_);
         }
 
         /**
@@ -278,7 +273,7 @@ namespace dsp
          * This method uses a *linear average* of squared window samples over the
          * hop interval, providing smoother energy balance than RMS normalization.
          */
-        FASTDSP_FORCE_INLINE void ComputeCOLAGain_Linear()
+        inline __attribute__((always_inline)) void ComputeCOLAGain_Linear()
         {
             const size_t overlap = FFT_SIZE / HOP_SIZE;
             float accum[HOP_SIZE] = {0.0f};
@@ -320,10 +315,8 @@ namespace dsp
             for (size_t i = 0; i < FFT_SIZE; ++i)
             {
                 size_t idx = (write_idx_ + i) & (FFT_SIZE - 1);
-                // fft_in_[i] = circ_buf_[idx];
                 fft_in_[i] = circ_buf_[idx] * window_[i]; // merged gather + window
             }
-            // dsp::ApplyWindow(window_, fft_in_, FFT_SIZE);
 
             // --- 2. Forward FFT ---
             fft_.Forward(fft_in_, fft_out_);
@@ -331,9 +324,9 @@ namespace dsp
             // --- 3. User-defined spectral processing ---
             if constexpr (kProcessingMode == ProcessingMode::MagPhase)
             {
-                dsp::spectral::ToMagPhase(fft_out_, mags_, phases_, FFT_SIZE);
+                daisyfarm::ToMagPhase(fft_out_, mags_, phases_, FFT_SIZE);
                 ProcessFrame(mags_, phases_, N_BINS);
-                dsp::spectral::FromMagPhase(mags_, phases_, fft_out_, FFT_SIZE);
+                daisyfarm::FromMagPhase(mags_, phases_, fft_out_, FFT_SIZE);
             }
             else
             {
@@ -370,6 +363,6 @@ namespace dsp
         float window_alpha_;          ///< Window shape parameter.
     };
 
-} // namespace dsp
+} // namespace daisyfarm
 
 /* EOF */

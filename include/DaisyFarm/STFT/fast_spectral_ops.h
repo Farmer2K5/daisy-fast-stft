@@ -26,8 +26,8 @@
  * - Coherence, phase, and energy normalization
  * - Texture and freeze effects
  *
- * @see dsp::spectral for conversion utilities (`fast_spectral.h`)
- * @see dsp::spectral::features for analysis utilities (`fast_spectral_features.h`)
+ * @see daisyfarm::spectral for conversion utilities (`fast_spectral.h`)
+ * @see daisyfarm::spectral::features for analysis utilities (`fast_spectral_features.h`)
  *
  * @ingroup FastDSPSpectral
  * @defgroup FastDSPSpectralOps Frequency-Domain Operations
@@ -39,7 +39,7 @@
 #include <cstddef>
 #include "arm_math.h"
 
-namespace dsp::spectral::ops
+namespace daisyfarm
 {
 
     // -----------------------------------------------------------------------------
@@ -418,6 +418,6 @@ namespace dsp::spectral::ops
         }
     }
 
-} // namespace dsp::spectral::ops
+} // namespace daisyfarm
 
 /* EOF */

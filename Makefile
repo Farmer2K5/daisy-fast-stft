@@ -1,10 +1,11 @@
 # Daisy Patch SM Project
 TARGET = SFFT_TestBed
+# APP_TYPE = BOOT_SRAM
 
 # Sources
-# CPP_SOURCES = ex_stft_mono.cpp
-# CPP_SOURCES = ex_stft_stereo.cpp
-CPP_SOURCES = ex_istft_simple.cpp
+CPP_SOURCES = ./examples/ex_stft_mono.cpp
+# CPP_SOURCES = ./examples/ex_stft_stereo.cpp
+# CPP_SOURCES = ./examples/ex_istft_simple.cpp
 
 # Path to DaisySP and LibDaisy 
 DAISYSP_DIR ?= ../lib/DaisySP
@@ -24,11 +25,17 @@ CMSIS_SOURCES = $(CMSIS_PATH)/Source/TransformFunctions/TransformFunctions.c \
 
 C_SOURCES = $(CMSIS_SOURCES)
 
-# Location of Hardware Support File within the SDK
+# Includes
+# Define the root directory for header files
+INC_ROOT = ./include
+# Search for all subdirectories using a wildcard pattern
+SUBDIRS := $(shell find $(INC_ROOT) -maxdepth 5 -type d)
+# Convert the list of directories into the format required by the compiler
+C_INCLUDES := $(patsubst %, -I%, $(SUBDIRS))
+# Add the CMSIS-DSP libraries
 C_INCLUDES += -I$(CMSIS_PATH)/Include \
               -I$(CMSIS_PATH)/PrivateInclude \
-              -I$(CMSIS_CORE_PATH)/Include \
-              -I./include
+              -I$(CMSIS_CORE_PATH)/Include
 
 
 # (optional) Includes DaisySP-LGPL (like ReverbSc, etc.) source files within project.

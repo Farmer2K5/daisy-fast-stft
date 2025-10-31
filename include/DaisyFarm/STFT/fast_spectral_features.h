@@ -24,7 +24,7 @@
 #include <cmath>
 #include <cstddef>
 
-namespace dsp::spectral::features
+namespace daisyfarm
 {
 
     // -----------------------------------------------------------------------------
@@ -187,6 +187,6 @@ namespace dsp::spectral::features
         return entropy / log2f(static_cast<float>(n_bins));
     }
 
-} // namespace dsp::spectral::features
+} // namespace daisyfarm
 
 /* EOF */

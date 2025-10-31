@@ -31,7 +31,7 @@
 #include "arm_math.h"
 #include <cstring>
 
-namespace dsp
+namespace daisyfarm
 {
 
     /**
@@ -52,7 +52,7 @@ namespace dsp
      *
      * Typical use case:
      * @code
-     * dsp::Fast_ISTFT<1024, 256> istft;
+     * daisyfarm::Fast_ISTFT<1024, 256> istft;
      * float output[256];
      * istft.ProcessFrame(fft_data, output);
      * @endcode
@@ -94,7 +94,7 @@ namespace dsp
         Fast_ISTFT()
             : read_pos_(0), cola_gain_(1.0f)
         {
-            dsp::MakeWindow(dsp::WindowType::Hann, window_, FFT_SIZE);
+            daisyfarm::MakeWindow(daisyfarm::WindowType::Hann, window_, FFT_SIZE);
             std::memset(overlap_buf_, 0, sizeof(overlap_buf_));
             ComputeCOLAGain_Linear();
         }
@@ -134,7 +134,7 @@ namespace dsp
          */
         void SetWindow(WindowType type, float alpha = 0.4f)
         {
-            dsp::MakeWindow(type, window_, FFT_SIZE, alpha);
+            daisyfarm::MakeWindow(type, window_, FFT_SIZE, alpha);
             ComputeCOLAGain_Linear();
         }
 
@@ -164,7 +164,7 @@ namespace dsp
             fft_.Inverse(fft_data, time_buf_);
 
             // (2) Apply synthesis window
-            dsp::ApplyWindow(window_, time_buf_, FFT_SIZE);
+            daisyfarm::ApplyWindow(window_, time_buf_, FFT_SIZE);
 
             // (3) Overlap-add accumulation into circular buffer
             for (size_t i = 0; i < FFT_SIZE; ++i)
@@ -233,6 +233,6 @@ namespace dsp
         float cola_gain_;             ///< Constant overlap-add normalization gain.
     };
 
-} // namespace dsp
+} // namespace daisyfarm
 
 /* EOF */

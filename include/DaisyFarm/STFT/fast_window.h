@@ -32,7 +32,7 @@
 #include <cstddef>
 #include "arm_math.h"
 
-namespace dsp
+namespace daisyfarm
 {
 
     // -------------------------------------------------------------------------
@@ -98,7 +98,7 @@ namespace dsp
      * @code
      * constexpr size_t FFT_SIZE = 1024;
      * float window[FFT_SIZE];
-     * dsp::MakeWindow(dsp::WindowType::Hann, window, FFT_SIZE);
+     * daisyfarm::MakeWindow(daisyfarm::WindowType::Hann, window, FFT_SIZE);
      * @endcode
      *
      * @note
@@ -201,7 +201,7 @@ namespace dsp
      *
      * @par Example
      * @code
-     * dsp::NormalizeWindow(window, 1024, dsp::NormType::RMS);
+     * daisyfarm::NormalizeWindow(window, 1024, daisyfarm::NormType::RMS);
      * @endcode
      *
      * @note
@@ -254,7 +254,7 @@ namespace dsp
      *
      * @par Example
      * @code
-     * dsp::ApplyWindow(window, audio_frame, 1024);
+     * daisyfarm::ApplyWindow(window, audio_frame, 1024);
      * @endcode
      */
     inline void ApplyWindow(const float *window, float *data, size_t size)
@@ -262,6 +262,6 @@ namespace dsp
         arm_mult_f32(data, window, data, size);
     }
 
-} // namespace dsp
+} // namespace daisyfarm
 
 /* EOF */

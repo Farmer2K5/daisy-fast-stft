@@ -1,10 +1,10 @@
 /**
  * @file main_stereo.cpp
- * @brief Stereo real-time spectral processing on the Daisy Seed using dsp::Fast_STFT.
+ * @brief Stereo real-time spectral processing on the Daisy Seed using daisyfarm::Fast_STFT.
  *
  * @details
  * This example demonstrates a dual-channel (stereo) spectral processing pipeline
- * using the `dsp::Fast_STFT` class on the Daisy Seed.
+ * using the `daisyfarm::Fast_STFT` class on the Daisy Seed.
  *
  * Each channel (Left and Right) runs its own STFT analysis/synthesis chain using
  * separate framework instances (`sfft_L` and `sfft_R`).
@@ -27,7 +27,7 @@
 
 using namespace daisy;
 using namespace daisysp;
-using namespace dsp;
+using namespace daisyfarm;
 
 // -----------------------------------------------------------------------------
 // Hardware + DSP Configuration
@@ -37,7 +37,7 @@ DaisyPod hw; ///< Global Daisy hardware object
 
 // === STFT Configuration ===
 // Each parameter must satisfy compile-time constraints enforced by Fast_STFT.
-constexpr size_t FFT_SIZE = 2048;                             ///< FFT window size (samples)
+constexpr size_t FFT_SIZE = 1024;                             ///< FFT window size (samples)
 constexpr size_t HOP_SIZE = FFT_SIZE / 4;                     ///< Hop size between analysis frames (samples)
 constexpr size_t BLOCK_SIZE = 64;                             ///< Audio processing block size (samples)
 // constexpr ProcessingMode PROC_MODE = ProcessingMode::Complex; ///< Complex-domain processing mode

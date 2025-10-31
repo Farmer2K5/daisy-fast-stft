@@ -28,7 +28,7 @@
 #include <cstddef>
 #include "arm_math.h"
 
-namespace dsp::spectral
+namespace daisyfarm
 {
 
     // -----------------------------------------------------------------------------
@@ -64,7 +64,7 @@ namespace dsp::spectral
      * @par Example
      * @code
      * float mags[N_BINS], phases[N_BINS];
-     * dsp::spectral::ToMagPhase(fft_out, mags, phases, FFT_SIZE);
+     * daisyfarm::spectral::ToMagPhase(fft_out, mags, phases, FFT_SIZE);
      * @endcode
      */
     inline void ToMagPhase(const float *fft_data, float *mags, float *phases, size_t fft_size)
@@ -113,7 +113,7 @@ namespace dsp::spectral
      * @par Example
      * @code
      * float mags[N_BINS], phases[N_BINS], fft_buf[FFT_SIZE];
-     * dsp::spectral::FromMagPhase(mags, phases, fft_buf, FFT_SIZE);
+     * daisyfarm::spectral::FromMagPhase(mags, phases, fft_buf, FFT_SIZE);
      * @endcode
      */
     inline void FromMagPhase(const float *mags, const float *phases, float *fft_data, size_t fft_size)
@@ -162,7 +162,7 @@ namespace dsp::spectral
      * ```cpp
      * constexpr size_t FFT_SIZE = 1024;
      * float freqs[FFT_SIZE / 2 + 1];
-     * dsp::spectral::ComputeFrequencyBins(freqs, FFT_SIZE, 48000.0f);
+     * daisyfarm::spectral::ComputeFrequencyBins(freqs, FFT_SIZE, 48000.0f);
      * ```
      *
      * @ingroup FastSpectralFeatures
@@ -175,6 +175,6 @@ namespace dsp::spectral
             freqs[k] = k * bin_hz;
     }
 
-} // namespace dsp::spectral
+} // namespace daisyfarm
 
 /* EOF */

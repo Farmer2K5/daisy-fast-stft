@@ -1,6 +1,6 @@
 /**
  * @file main_mono.cpp
- * @brief Real-time spectral processing example on the Daisy Seed using dsp::Fast_STFT.
+ * @brief Real-time spectral processing example on the Daisy Seed using daisyfarm::Fast_STFT.
  *
  * @details
  * This example demonstrates a **single-channel (mono)** spectral processing pipeline
@@ -21,7 +21,7 @@
 
 using namespace daisy;
 using namespace daisysp;
-using namespace dsp;
+using namespace daisyfarm;
 
 // -----------------------------------------------------------------------------
 // Hardware + DSP Configuration
@@ -31,9 +31,9 @@ DaisyPod hw; ///< Global Daisy hardware interface
 
 // === STFT Configuration ===
 // These parameters must satisfy compile-time constraints enforced by Fast_STFT.
-constexpr size_t FFT_SIZE = 2048;                              ///< Size of the FFT window (samples)
+constexpr size_t FFT_SIZE = 1024;                              ///< Size of the FFT window (samples)
 constexpr size_t HOP_SIZE = FFT_SIZE / 8;                      ///< Hop size between frames (samples)
-constexpr size_t BLOCK_SIZE = 64;                              ///< I/O processing block size (samples)
+constexpr size_t BLOCK_SIZE = 32;                              ///< I/O processing block size (samples)
 // constexpr ProcessingMode PROC_MODE = ProcessingMode::Complex;  ///< Complex-domain processing mode
 constexpr ProcessingMode PROC_MODE = ProcessingMode::MagPhase; ///< Spectral processing mode (Mag/Phase domain)
 constexpr float SAMPLE_RATE = 48000.0f;                        ///< Audio sample rate (Hz)
@@ -116,7 +116,7 @@ int main(void)
     hw.Init(boost);
 
     /** Initialize USB serial logging for debug output. */
-    hw.seed.StartLog();
+    hw.seed.StartLog(true);
 
     /** Optional: Override audio sample rate (default = 48 kHz). */
     // hw.SetAudioSampleRate(SAMPLE_RATE);

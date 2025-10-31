@@ -3,7 +3,7 @@
  * @brief Lightweight C++ wrapper for CMSIS-DSP real FFT (RFFT) transforms.
  *
  * @details
- * The `dsp::Fast_RFFT` class provides a thin, type-safe, and copyable wrapper
+ * The `daisyfarm::Fast_RFFT` class provides a thin, type-safe, and copyable wrapper
  * around the CMSIS-DSP `arm_rfft_fast_f32` API. It simplifies FFT operations
  * for embedded DSP development and integrates cleanly with the other components
  * of the FastDSP framework.
@@ -16,7 +16,7 @@
  *
  * **Typical Use:**
  * @code
- * dsp::Fast_RFFT<1024> fft;
+ * daisyfarm::Fast_RFFT<1024> fft;
  * float time_buf[1024];
  * float freq_buf[1024];
  *
@@ -40,7 +40,7 @@
 #include <cstdint>
 #include "arm_math.h"
 
-namespace dsp
+namespace daisyfarm
 {
 
     // -------------------------------------------------------------------------
@@ -126,7 +126,7 @@ namespace dsp
          * @par Example
          * @code
          * fft.Forward(time_signal, fft_out);
-         * dsp::ToMagPhase(fft_out, mags, phases, FFT_SIZE);
+         * daisyfarm::ToMagPhase(fft_out, mags, phases, FFT_SIZE);
          * @endcode
          */
         inline void Forward(const float *input, float *output) const noexcept
@@ -215,6 +215,6 @@ namespace dsp
         }
     };
 
-} // namespace dsp
+} // namespace daisyfarm
 
 /* EOF */
